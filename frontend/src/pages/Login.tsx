@@ -1,45 +1,28 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import ThemeToggle from '@/components/ThemeToggle';
 
-const Register: React.FC = () => {
-  const [name, setName] = useState('');
+const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState<{
-    name?: string;
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-  }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { register, isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const validateForm = () => {
-    const newErrors: {
-      name?: string;
-      email?: string;
-      password?: string;
-      confirmPassword?: string;
-    } = {};
-    
-    if (!name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    }
+    const newErrors: { email?: string; password?: string } = {};
     
     if (!email) {
       newErrors.email = 'Email is required';
@@ -53,12 +36,6 @@ const Register: React.FC = () => {
       newErrors.password = 'Password must be at least 6 characters';
     }
     
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -68,18 +45,18 @@ const Register: React.FC = () => {
     
     if (!validateForm()) return;
     
-    const success = await register(name.trim(), email, password);
+    const success = await login(email, password, rememberMe);
     
     if (success) {
       toast({
-        title: "Account created!",
-        description: "Welcome to Goal Tracker. You're now signed in.",
+        title: "Welcome back!",
+        description: "You have been successfully logged in.",
       });
       navigate('/dashboard');
     } else {
       toast({
-        title: "Registration failed",
-        description: "An account with this email already exists.",
+        title: "Login failed",
+        description: "Invalid email or password. Please try again.",
         variant: "destructive",
       });
     }
@@ -93,31 +70,17 @@ const Register: React.FC = () => {
       
       <Card className="w-full max-w-md glass animate-fade-in">
         <CardHeader className="text-center space-y-1">
-          <CardTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Create Account
+          {/* <CardTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent"> */}
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent">
+            Welcome Back
           </CardTitle>
           <CardDescription>
-            Join Goal Tracker to start achieving your dreams
+            Sign in to your account to continue
           </CardDescription>
         </CardHeader>
         
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Enter your full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={errors.name ? 'border-destructive' : ''}
-              />
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name}</p>
-              )}
-            </div>
-            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -139,7 +102,7 @@ const Register: React.FC = () => {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Create a password"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
@@ -163,34 +126,18 @@ const Register: React.FC = () => {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={errors.confirmPassword ? 'border-destructive pr-10' : 'pr-10'}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              {errors.confirmPassword && (
-                <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-              )}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+              />
+              <Label
+                htmlFor="remember"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Remember me
+              </Label>
             </div>
 
             <Button
@@ -201,24 +148,24 @@ const Register: React.FC = () => {
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Creating account...
+                  Signing in...
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Create Account
+                  <LogIn className="h-4 w-4" />
+                  Sign In
                 </div>
               )}
             </Button>
           </form>
           
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
+            <span className="text-muted-foreground">Don't have an account? </span>
             <Link
-              to="/login"
+              to="/register"
               className="font-medium text-primary hover:underline"
             >
-              Sign in
+              Sign up
             </Link>
           </div>
         </CardContent>
@@ -227,4 +174,4 @@ const Register: React.FC = () => {
   );
 };
 
-export default Register;
+export default Login;

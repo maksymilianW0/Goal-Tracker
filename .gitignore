@@ -35,3 +35,13 @@ Thumbs.db
 
 # Optional: coverage
 coverage/
+
+
+
+# Python
+venv/
+__pycache__/
+
+
+# Temp
+Makefile
