@@ -1,0 +1,177 @@
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #121212;
+    color: #eee;
+    margin: 0;
+    padding: 20px;
+}
+h1 {
+    text-align: center;
+    color: #b388ff;
+}
+.toolbar {
+    text-align: center;
+    margin-bottom: 20px;
+}
+.toolbar button {
+    background: linear-gradient(135deg, #7b1fa2, #3f51b5);
+    border: none;
+    padding: 12px 24px;
+    font-size: 1rem;
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+}
+.toolbar button:hover {
+    transform: scale(1.05);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+.card {
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.card h3 {
+    margin: 0;
+    color: #bb86fc;
+}
+.card .category {
+    font-size: 0.9rem;
+    color: #90caf9;
+}
+.progress-bar {
+    background: #333;
+    border-radius: 10px;
+    overflow: hidden;
+    height: 10px;
+}
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7b1fa2, #3f51b5);
+    width: 0%;
+    transition: width 0.3s;
+}
+.status {
+    font-size: 0.9rem;
+    color: #aaa;
+}
+.actions {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+.actions button {
+    background: none;
+    border: none;
+    color: #eee;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+/* Modal */
+.modal-bg {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    justify-content: center;
+    align-items: center;
+}
+.modal {
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 15px;
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+}
+.modal input, .modal textarea, .modal select {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    background: #2c2c2c;
+    color: #eee;
+}
+.modal label {
+    font-size: 0.9rem;
+    color: #aaa;
+}
+.modal button {
+    background: linear-gradient(135deg, #7b1fa2, #3f51b5);
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+}
+.hidden {
+    display: none;
+}
+
+
+
+#navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1.5rem;
+    background: linear-gradient(135deg, #7b1fa2, #3f51b5); /* gradient pasujący do buttonów */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-radius: 1rem;
+}
+
+#navbar .logo {
+    font-weight: bold;
+    font-size: 1.4rem;
+    color: #fff; /* trochę jaśniej niż #bb86fc, lepszy kontrast na gradient */
+    text-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+#navbar button {
+    background: #2a2a50; /* ciemny granat podobny do kafelków */
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    color: #bb86fc; /* fioletowy akcent pasujący do reszty */
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+#navbar button:hover {
+    background: linear-gradient(135deg, #7b1fa2, #3f51b5); /* hover zgodny z gradientem kafelków */
+    color: #fff;
+}
+
+
+
+
+
+.card-done {
+    box-shadow: 0 0 12px rgba(123, 31, 162, 0.6);
+    background-color: #2a2a2a;
+    opacity: 0.6;
+}
+.card-done > h3 {
+    text-decoration: line-through;
+    color: #999;
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Goal Tracker</title>
+  
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    <nav id="navbar">
+    <div class="nav-left">
+        <span class="logo">GoalTracker</span>
+    </div>
+    <div class="nav-right">
+        <button id="logoutBtn">🚪 Wyloguj</button>
+    </div>
+    </nav>
+
+
+  <h1>🎯 Goal Tracker</h1>
+
+  <div class="toolbar">
+    <button id="addGoalBtn">➕ Dodaj cel</button>
+  </div>
+
+  <div class="grid" id="goalGrid"></div>
+
+  <!-- Modal -->
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <h2 id="modalTitle">Dodaj cel</h2>
+      <label>Tytuł</label>
+      <input type="text" id="goalTitle">
+      <label>Opis</label>
+      <textarea id="goalDesc"></textarea>
+
+      <label>Kategoria</label>
+      <select id="goalCategory">
+        <option value="">(brak)</option>
+        <option value="__new">➕ Dodaj nową kategorię</option>
+      </select>
+      <input type="text" id="newCategoryInput" class="hidden" placeholder="Nowa kategoria...">
+
+      <label>
+        <input type="checkbox" id="progressMode"> Śledź progres w % 
+      </label>
+
+      <div id="progressSection" class="hidden">
+        <label>Postęp: <span id="progressValue">0%</span></label>
+        <input type="range" min="0" max="100" value="0" id="goalProgress">
+      </div>
+
+      <button id="saveGoal">Zapisz</button>
+    </div>
+  </div>
+
+
+  <script src="main.js"></script>
+</body>
+</html>
