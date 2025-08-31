@@ -175,3 +175,46 @@ h1 {
     text-decoration: line-through;
     color: #999;
 }
+
+
+
+
+.login-form {
+    background: #1e1e1e;
+    padding: 20px;
+    border-radius: 15px;
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+}
+
+.login-form input {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    background: #2c2c2c;
+    color: #eee;
+}
+
+.login-form input[type=submit] {
+    background: linear-gradient(135deg, #7b1fa2, #3f51b5);
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    margin-top: 24px;
+    margin-bottom: 4px;
+}
+
+
+form {
+    display: flex;
+    justify-content: center; /* wyśrodkowanie w osi X */
+    align-items: center;     /* wyśrodkowanie w osi Y */
+    
+    height: 100vh; /* 100% wysokości okna przeglądarki */
+}
