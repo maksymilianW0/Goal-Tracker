@@ -147,6 +147,6 @@ if __name__ == "__main__":
         with get_db() as conn:
             conn.execute(
                 "INSERT INTO users (login, password) VALUES (?, ?)",
-                ("maks", generate_password_hash("maksmaks"))
+                ("test", generate_password_hash("test1234"))
             )
     app.run(port=8080, debug=True)
