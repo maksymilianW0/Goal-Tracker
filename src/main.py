@@ -27,9 +27,9 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             title TEXT,
-            description TEXT,
+            desc TEXT,
             category TEXT,
-            is_progress INTEGER,
+            isProgress INTEGER,
             progress INTEGER,
             done INTEGER,
             FOREIGN KEY(user_id) REFERENCES users(id)
@@ -66,7 +66,7 @@ def save_goals_and_categories(user_id, goals, categories):
         # Dodaj nowe cele
         for g in goals:
             conn.execute("""
-            INSERT INTO goals (user_id, title, description, category, is_progress, progress, done)
+            INSERT INTO goals (user_id, title, desc, category, isProgress, progress, done)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
                 user_id,
