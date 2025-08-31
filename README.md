@@ -21,7 +21,7 @@ Goal Tracker to prosta aplikacja webowa napisana w **Flasku**, która pozwala na
 
 1. Sklonuj repozytorium:
 ```
-git clone https://github.com/twoj-nick/goal-tracker.git
+git clone https://github.com/maksymilianW0/goal-tracker.git
 cd goal-tracker
 ```
 
@@ -59,7 +59,7 @@ project-root/
 6. Kliknij **Reload** — aplikacja będzie dostępna pod `https://<twoj-login>.pythonanywhere.com`
 
 ## Użytkowanie i admin
-- Masz już przykładowego użytkownika (jeśli zainicjalizowałeś bazę): login `maks`, hasło `maksmaks`.
+- Masz już przykładowego użytkownika (jeśli zainicjalizowałeś bazę): login `test`, hasło `test1234`.
 - Do debugowania używaj logów w konsoli PythonAnywhere lub `print(app.url_map)` lokalnie.
 
 ## Przyszłe plany
