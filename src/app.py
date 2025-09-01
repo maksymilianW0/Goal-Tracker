@@ -140,13 +140,15 @@ def api_save():
     return jsonify({"ok": True})
 
 # --- Inicjalizacja bazy i uruchomienie ---
+init_db()
+# Tworzymy przykładowego użytkownika tylko raz
+if not find_user("test"):
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO users (login, password) VALUES (?, ?)",
+            ("test", generate_password_hash("test1234"))
+        )
 if __name__ == "__main__":
-    init_db()
-    # Tworzymy przykładowego użytkownika tylko raz
-    if not find_user("maks"):
-        with get_db() as conn:
-            conn.execute(
-                "INSERT INTO users (login, password) VALUES (?, ?)",
-                ("test", generate_password_hash("test1234"))
-            )
     app.run(port=8080, debug=True)
+
+# ▼
