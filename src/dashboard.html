@@ -1,59 +1,97 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <title>Goal Tracker</title>
-  
-  <link rel="stylesheet" href="main.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Goal Tracker — split add button</title>
+  <link rel="stylesheet" href="main.css" />
 </head>
 <body>
-    <nav id="navbar">
+  <nav id="navbar">
     <div class="nav-left">
-        <span class="logo">GoalTracker</span>
+      <span class="logo">GoalTracker</span>
     </div>
     <div class="nav-right">
-        <button id="logoutBtn">🚪 Wyloguj</button>
+      <button id="logoutBtn">🚪 Wyloguj</button>
     </div>
-    </nav>
+  </nav>
 
+  <main>
+    <h1>🎯 Goal Tracker</h1>
 
-  <h1>🎯 Goal Tracker</h1>
+    <!-- Split add button: left = add simpleGoal, right = dropdown -->
+    <div class="toolbar">
+      <div class="add-split" id="addSplit">
+        <button id="addSimpleGoalBtn" class="add-main" aria-label="Dodaj simpleGoal">
+          ➕ Dodaj simpleGoal
+        </button>
+        <button id="toggleAddMenuBtn" class="add-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="addGoalMenu" title="Więcej typów">
+          ▾
+        </button>
 
-  <div class="toolbar">
-    <button id="addGoalBtn">➕ Dodaj cel</button>
-  </div>
+        <div class="add-dropdown-menu" id="addGoalMenu" role="menu" aria-hidden="true">
+          <button class="menu-item" data-type="simple" role="menuitem">➕ simpleGoal</button>
+          <button class="menu-item" data-type="progress" role="menuitem">📊 progressGoal</button>
+          <button class="menu-item" data-type="habit" role="menuitem">🔁 habitGoal (placeholder)</button>
+        </div>
+      </div>
+    </div>
 
-  <div class="grid" id="goalGrid"></div>
+    <div class="grid" id="simpleGoalGrid" aria-live="polite"></div>
+  </main>
 
-  <!-- Modal -->
-  <div class="modal-bg" id="modalBg">
-    <div class="modal">
-      <h2 id="modalTitle">Dodaj cel</h2>
-      <label>Tytuł</label>
-      <input type="text" id="goalTitle">
-      <label>Opis</label>
-      <textarea id="goalDesc"></textarea>
+  <!-- SimpleGoal Modal -->
+  <div id="simpleGoalModalBg" class="simple-goal-modal-bg" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="simple-goal-modal" role="document" aria-labelledby="simpleGoalModalTitle">
+      <h2 id="simpleGoalModalTitle">Dodaj simpleGoal</h2>
 
-      <label>Kategoria</label>
-      <select id="goalCategory">
+      <label for="simpleGoalTitle">Tytuł</label>
+      <input type="text" id="simpleGoalTitle" name="simpleGoalTitle" autocomplete="off" />
+
+      <label for="simpleGoalDesc">Opis</label>
+      <textarea id="simpleGoalDesc" name="simpleGoalDesc" rows="4"></textarea>
+
+      <label for="simpleGoalCategory">Kategoria</label>
+      <select id="simpleGoalCategory" name="simpleGoalCategory">
         <option value="">(brak)</option>
         <option value="__new">➕ Dodaj nową kategorię</option>
       </select>
-      <input type="text" id="newCategoryInput" class="hidden" placeholder="Nowa kategoria...">
 
-      <label>
-        <input type="checkbox" id="progressMode"> Śledź progres w % 
-      </label>
+      <input type="text" id="newSimpleCategoryInput" class="hidden" placeholder="Nowa kategoria..." />
 
-      <div id="progressSection" class="hidden">
-        <label>Postęp: <span id="progressValue">0%</span></label>
-        <input type="range" min="0" max="100" value="0" id="goalProgress">
+      <div class="simple-modal-actions">
+        <button id="saveSimpleGoalBtn" class="primary">Zapisz</button>
       </div>
-
-      <button id="saveGoal">Zapisz</button>
     </div>
   </div>
 
+  <!-- ProgressGoal Modal -->
+  <div id="progressGoalModalBg" class="simple-goal-modal-bg" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="simple-goal-modal" role="document" aria-labelledby="progressGoalModalTitle">
+      <h2 id="progressGoalModalTitle">Dodaj progressGoal</h2>
+
+      <label for="progressGoalTitle">Tytuł</label>
+      <input type="text" id="progressGoalTitle" name="progressGoalTitle" autocomplete="off" />
+
+      <label for="progressGoalDesc">Opis</label>
+      <textarea id="progressGoalDesc" name="progressGoalDesc" rows="3"></textarea>
+
+      <label for="progressGoalCategory">Kategoria</label>
+      <select id="progressGoalCategory" name="progressGoalCategory">
+        <option value="">(brak)</option>
+        <option value="__new">➕ Dodaj nową kategorię</option>
+      </select>
+
+      <input type="text" id="newProgressCategoryInput" class="hidden" placeholder="Nowa kategoria..." />
+
+      <label for="progressGoalRange">Postęp: <span id="progressGoalValue">0%</span></label>
+      <input type="range" id="progressGoalRange" min="0" max="100" value="0" />
+
+      <div class="simple-modal-actions">
+        <button id="saveProgressGoalBtn" class="primary">Zapisz progressGoal</button>
+      </div>
+    </div>
+  </div>
 
   <script src="main.js"></script>
 </body>
