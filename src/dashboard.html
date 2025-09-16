@@ -3,92 +3,181 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Goal Tracker — split add button</title>
+  <title>Goal Tracker — multi types</title>
   <link rel="stylesheet" href="main.css" />
 </head>
 <body>
   <nav id="navbar">
-    <div class="nav-left">
-      <span class="logo">GoalTracker</span>
-    </div>
+    <div class="nav-left"><span class="logo">GoalTracker</span></div>
     <div class="nav-right">
-      <button id="logoutBtn">🚪 Wyloguj</button>
+      <button id="logoutBtn" class="logout-btn">🚪 Wyloguj</button>
     </div>
   </nav>
 
   <main>
     <h1>🎯 Goal Tracker</h1>
 
-    <!-- Split add button: left = add simpleGoal, right = dropdown -->
+    <!-- Split add button -->
     <div class="toolbar">
       <div class="add-split" id="addSplit">
-        <button id="addSimpleGoalBtn" class="add-main" aria-label="Dodaj simpleGoal">
-          ➕ Dodaj simpleGoal
-        </button>
-        <button id="toggleAddMenuBtn" class="add-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="addGoalMenu" title="Więcej typów">
-          ▾
-        </button>
+        <button id="addSimpleGoalBtn" class="add-main" aria-label="Dodaj simpleGoal">➕ Dodaj simpleGoal</button>
+        <button id="toggleAddMenuBtn" class="add-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="addGoalMenu" title="Więcej typów">▾</button>
 
         <div class="add-dropdown-menu" id="addGoalMenu" role="menu" aria-hidden="true">
           <button class="menu-item" data-type="simple" role="menuitem">➕ simpleGoal</button>
-          <button class="menu-item" data-type="progress" role="menuitem">📊 progressGoal</button>
-          <button class="menu-item" data-type="habit" role="menuitem">🔁 habitGoal (placeholder)</button>
+          <button class="menu-item" data-type="progress" role="menuitem">📈 progressGoal</button>
+          <button class="menu-item" data-type="habit" role="menuitem">🔁 habitGoal</button>
+          <button class="menu-item" data-type="streak" role="menuitem">🚫 streakGoal (sober-style)</button>
         </div>
       </div>
     </div>
 
-    <div class="grid" id="simpleGoalGrid" aria-live="polite"></div>
+    <!-- STATS PANEL -->
+  <section id="statsPanel" class="stats-panel" aria-live="polite">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label">Wszystkie cele</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statCompleted">0</div>
+        <div class="stat-label">Ukończone</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statActiveStreaks">0</div>
+        <div class="stat-label">Aktywne streaki</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statBestStreak">0</div>
+        <div class="stat-label">Najdłuższa seria</div>
+      </div>
+    </div>
+
+    <div class="stats-row small">
+      <div class="stat-mini">
+        <div class="mini-label">Średni progress</div>
+        <div class="mini-value" id="statAvgProgress">—</div>
+      </div>
+      <div class="stat-mini">
+        <div class="mini-label">Habit (% ostatnich 7 dni)</div>
+        <div class="mini-value" id="statHabitRate">—</div>
+      </div>
+      <div class="stat-mini">
+        <div class="mini-label">Dni aktywności</div>
+        <div class="mini-value" id="statDaysActive">—</div>
+      </div>
+      <div class="stat-mini">
+        <div class="mini-label">Suma faili</div>
+        <div class="mini-value" id="statTotalFails">0</div>
+      </div>
+    </div>
+
+    <div class="stats-row lists">
+      <div class="stat-list" id="statUpcomingDeadlines">
+        <div class="list-title">Nadchodzące deadline'y (7 dni)</div>
+        <ul></ul>
+      </div>
+      <div class="stat-list" id="statTopStreaks">
+        <div class="list-title">Top streaki</div>
+        <ul></ul>
+      </div>
+    </div>
+  </section>
+
+
+    <div class="grid" id="goalsGrid" aria-live="polite"></div>
   </main>
 
   <!-- SimpleGoal Modal -->
-  <div id="simpleGoalModalBg" class="simple-goal-modal-bg" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="simple-goal-modal" role="document" aria-labelledby="simpleGoalModalTitle">
+  <div id="simpleGoalModalBg" class="modal-bg" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal" role="document" aria-labelledby="simpleGoalModalTitle">
       <h2 id="simpleGoalModalTitle">Dodaj simpleGoal</h2>
 
       <label for="simpleGoalTitle">Tytuł</label>
-      <input type="text" id="simpleGoalTitle" name="simpleGoalTitle" autocomplete="off" />
+      <input type="text" id="simpleGoalTitle" autocomplete="off" />
 
       <label for="simpleGoalDesc">Opis</label>
-      <textarea id="simpleGoalDesc" name="simpleGoalDesc" rows="4"></textarea>
+      <textarea id="simpleGoalDesc" rows="3"></textarea>
 
       <label for="simpleGoalCategory">Kategoria</label>
-      <select id="simpleGoalCategory" name="simpleGoalCategory">
-        <option value="">(brak)</option>
-        <option value="__new">➕ Dodaj nową kategorię</option>
-      </select>
-
+      <select id="simpleGoalCategory"></select>
       <input type="text" id="newSimpleCategoryInput" class="hidden" placeholder="Nowa kategoria..." />
 
-      <div class="simple-modal-actions">
+      <label for="simpleGoalDeadline">Deadline (opcjonalnie)</label>
+      <input type="date" id="simpleGoalDeadline" />
+
+      <div class="modal-actions">
         <button id="saveSimpleGoalBtn" class="primary">Zapisz</button>
       </div>
     </div>
   </div>
 
   <!-- ProgressGoal Modal -->
-  <div id="progressGoalModalBg" class="simple-goal-modal-bg" aria-hidden="true" role="dialog" aria-modal="true">
-    <div class="simple-goal-modal" role="document" aria-labelledby="progressGoalModalTitle">
+  <div id="progressGoalModalBg" class="modal-bg" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal" role="document" aria-labelledby="progressGoalModalTitle">
       <h2 id="progressGoalModalTitle">Dodaj progressGoal</h2>
 
       <label for="progressGoalTitle">Tytuł</label>
-      <input type="text" id="progressGoalTitle" name="progressGoalTitle" autocomplete="off" />
+      <input type="text" id="progressGoalTitle" autocomplete="off" />
 
       <label for="progressGoalDesc">Opis</label>
-      <textarea id="progressGoalDesc" name="progressGoalDesc" rows="3"></textarea>
+      <textarea id="progressGoalDesc" rows="2"></textarea>
 
       <label for="progressGoalCategory">Kategoria</label>
-      <select id="progressGoalCategory" name="progressGoalCategory">
-        <option value="">(brak)</option>
-        <option value="__new">➕ Dodaj nową kategorię</option>
-      </select>
-
+      <select id="progressGoalCategory"></select>
       <input type="text" id="newProgressCategoryInput" class="hidden" placeholder="Nowa kategoria..." />
 
-      <label for="progressGoalRange">Postęp: <span id="progressGoalValue">0%</span></label>
+      <label>Start progress (0–100)</label>
       <input type="range" id="progressGoalRange" min="0" max="100" value="0" />
+      <div class="range-value"><span id="progressGoalValue">0%</span></div>
 
-      <div class="simple-modal-actions">
-        <button id="saveProgressGoalBtn" class="primary">Zapisz progressGoal</button>
+      <div class="modal-actions">
+        <button id="saveProgressGoalBtn" class="primary">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HabitGoal Modal -->
+  <div id="habitGoalModalBg" class="modal-bg" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal" role="document" aria-labelledby="habitGoalModalTitle">
+      <h2 id="habitGoalModalTitle">Dodaj habitGoal</h2>
+
+      <label for="habitGoalTitle">Tytuł</label>
+      <input type="text" id="habitGoalTitle" autocomplete="off" />
+
+      <label for="habitGoalDesc">Opis</label>
+      <textarea id="habitGoalDesc" rows="2"></textarea>
+
+      <label for="habitGoalCategory">Kategoria</label>
+      <select id="habitGoalCategory"></select>
+      <input type="text" id="newHabitCategoryInput" class="hidden" placeholder="Nowa kategoria..." />
+
+      <div class="modal-actions">
+        <button id="saveHabitGoalBtn" class="primary">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- StreakGoal Modal (TERAZ Z OPISEM) -->
+  <div id="streakGoalModalBg" class="modal-bg" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal" role="document" aria-labelledby="streakGoalModalTitle">
+      <h2 id="streakGoalModalTitle">Dodaj streakGoal</h2>
+
+      <label for="streakGoalTitle">Tytuł</label>
+      <input type="text" id="streakGoalTitle" autocomplete="off" />
+
+      <label for="streakGoalDesc">Opis</label>
+      <textarea id="streakGoalDesc" rows="2"></textarea>
+
+      <label for="streakGoalCategory">Kategoria</label>
+      <select id="streakGoalCategory"></select>
+      <input type="text" id="newStreakCategoryInput" class="hidden" placeholder="Nowa kategoria..." />
+
+      <label for="streakStartDate">Start (data, opcjonalnie)</label>
+      <input type="date" id="streakStartDate" />
+
+      <div class="modal-actions">
+        <button id="saveStreakGoalBtn" class="primary">Zapisz</button>
       </div>
     </div>
   </div>

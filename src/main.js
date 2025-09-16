@@ -1,344 +1,371 @@
-/* app.js — split add button version */
+/* app.js — multi-type goals: simpleGoal, progressGoal, habitGoal, streakGoal
+   poprz. zmiany: streakGoal ma opis; finished goals mają klasę .card-done; logout button style przywrócony */
 'use strict';
 
-/* STORAGE */
-const STORAGE_KEYS = {
-  SIMPLE_GOALS: 'simpleGoals_split',
-  CATEGORIES: 'simpleGoalCategories_split'
-};
-
-let simpleGoals = [];
+const STORAGE_KEY = 'goals_v1';
+let goals = [];
 let categories = [];
 
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.SIMPLE_GOALS);
-    const rawC = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-    simpleGoals = raw ? JSON.parse(raw) : [];
-    categories = rawC ? JSON.parse(rawC) : [];
-  } catch (e) {
-    console.error('loadData error', e);
-    simpleGoals = [];
-    categories = [];
-  }
-}
-function saveData() {
-  localStorage.setItem(STORAGE_KEYS.SIMPLE_GOALS, JSON.stringify(simpleGoals));
-  localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-}
+function genId(){ if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); return 'id-' + Math.random().toString(36).slice(2,9); }
+function todayStr(){ const d=new Date(); return d.toISOString().split('T')[0]; }
+function daysBetween(a,b){ const A=new Date(a+'T00:00:00'), B=new Date(b+'T00:00:00'); return Math.floor((B-A)/(1000*60*60*24)); }
 
-/* DOM refs */
+function load(){ try { const raw=localStorage.getItem(STORAGE_KEY); goals = raw ? JSON.parse(raw) : []; const set=new Set(); goals.forEach(g=>g.category && set.add(g.category)); categories = Array.from(set); } catch(e){ console.error(e); goals=[]; categories=[]; } }
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(goals)); }
+
 const dom = {
   addSplit: document.getElementById('addSplit'),
   addSimpleGoalBtn: document.getElementById('addSimpleGoalBtn'),
   toggleAddMenuBtn: document.getElementById('toggleAddMenuBtn'),
   addGoalMenu: document.getElementById('addGoalMenu'),
-
+  goalsGrid: document.getElementById('goalsGrid'),
   logoutBtn: document.getElementById('logoutBtn'),
-  simpleGoalGrid: document.getElementById('simpleGoalGrid'),
 
-  // simple modal
-  simpleGoalModalBg: document.getElementById('simpleGoalModalBg'),
-  simpleGoalModalTitle: document.getElementById('simpleGoalModalTitle'),
-  simpleGoalTitle: document.getElementById('simpleGoalTitle'),
-  simpleGoalDesc: document.getElementById('simpleGoalDesc'),
-  simpleGoalCategory: document.getElementById('simpleGoalCategory'),
-  newSimpleCategoryInput: document.getElementById('newSimpleCategoryInput'),
-  saveSimpleGoalBtn: document.getElementById('saveSimpleGoalBtn'),
+  // Simple modal
+  simpleBg: document.getElementById('simpleGoalModalBg'),
+  simpleTitle: document.getElementById('simpleGoalTitle'),
+  simpleDesc: document.getElementById('simpleGoalDesc'),
+  simpleCategory: document.getElementById('simpleGoalCategory'),
+  newSimpleCat: document.getElementById('newSimpleCategoryInput'),
+  simpleDeadline: document.getElementById('simpleGoalDeadline'),
+  saveSimpleBtn: document.getElementById('saveSimpleGoalBtn'),
 
-  // progress modal
-  progressGoalModalBg: document.getElementById('progressGoalModalBg'),
-  progressGoalModalTitle: document.getElementById('progressGoalModalTitle'),
-  progressGoalTitle: document.getElementById('progressGoalTitle'),
-  progressGoalDesc: document.getElementById('progressGoalDesc'),
-  progressGoalCategory: document.getElementById('progressGoalCategory'),
-  newProgressCategoryInput: document.getElementById('newProgressCategoryInput'),
-  progressGoalRange: document.getElementById('progressGoalRange'),
-  progressGoalValue: document.getElementById('progressGoalValue'),
-  saveProgressGoalBtn: document.getElementById('saveProgressGoalBtn')
+  // Progress modal
+  progressBg: document.getElementById('progressGoalModalBg'),
+  progressTitle: document.getElementById('progressGoalTitle'),
+  progressDesc: document.getElementById('progressGoalDesc'),
+  progressCategory: document.getElementById('progressGoalCategory'),
+  newProgressCat: document.getElementById('newProgressCategoryInput'),
+  progressRange: document.getElementById('progressGoalRange'),
+  progressValue: document.getElementById('progressGoalValue'),
+  saveProgressBtn: document.getElementById('saveProgressGoalBtn'),
+
+  // Habit modal
+  habitBg: document.getElementById('habitGoalModalBg'),
+  habitTitle: document.getElementById('habitGoalTitle'),
+  habitDesc: document.getElementById('habitGoalDesc'),
+  habitCategory: document.getElementById('habitGoalCategory'),
+  newHabitCat: document.getElementById('newHabitCategoryInput'),
+  saveHabitBtn: document.getElementById('saveHabitGoalBtn'),
+
+  // Streak modal (added desc)
+  streakBg: document.getElementById('streakGoalModalBg'),
+  streakTitle: document.getElementById('streakGoalTitle'),
+  streakDesc: document.getElementById('streakGoalDesc'),
+  streakCategory: document.getElementById('streakGoalCategory'),
+  newStreakCat: document.getElementById('newStreakCategoryInput'),
+  streakStartDate: document.getElementById('streakStartDate'),
+  saveStreakBtn: document.getElementById('saveStreakGoalBtn')
 };
 
-/* Dropdown (split) */
+/* Dropdown split */
 let dropdownOpen = false;
-function openAddDropdown() {
-  dom.addGoalMenu.style.display = 'flex';
-  dom.addGoalMenu.setAttribute('aria-hidden', 'false');
-  dom.toggleAddMenuBtn.setAttribute('aria-expanded', 'true');
-  dropdownOpen = true;
-}
-function closeAddDropdown() {
-  dom.addGoalMenu.style.display = 'none';
-  dom.addGoalMenu.setAttribute('aria-hidden', 'true');
-  dom.toggleAddMenuBtn.setAttribute('aria-expanded', 'false');
-  dropdownOpen = false;
-}
+function openDropdown(){ dom.addGoalMenu.classList.add('open'); dom.toggleAddMenuBtn.setAttribute('aria-expanded','true'); dropdownOpen=true; }
+function closeDropdown(){ dom.addGoalMenu.classList.remove('open'); dom.toggleAddMenuBtn.setAttribute('aria-expanded','false'); dropdownOpen=false; }
 
-// left main button = add simpleGoal
-dom.addSimpleGoalBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  openSimpleGoalModal(null);
-  closeAddDropdown();
-});
+dom.addSimpleGoalBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openSimpleModal(null); closeDropdown(); });
+dom.toggleAddMenuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); dropdownOpen?closeDropdown():openDropdown(); });
 
-// right small toggle opens menu
-dom.toggleAddMenuBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (dropdownOpen) closeAddDropdown();
-  else openAddDropdown();
-});
+dom.addGoalMenu.addEventListener('click', (e)=>{ const btn=e.target.closest('.menu-item'); if(!btn) return; const type=btn.dataset.type; closeDropdown(); if(type==='simple') openSimpleModal(null); else if(type==='progress') openProgressModal(null); else if(type==='habit') openHabitModal(null); else if(type==='streak') openStreakModal(null); });
 
-// clicking menu items
-dom.addGoalMenu.addEventListener('click', (e) => {
-  const btn = e.target.closest('.menu-item');
-  if (!btn) return;
-  const type = btn.dataset.type;
-  closeAddDropdown();
-  if (type === 'simple') openSimpleGoalModal(null);
-  else if (type === 'progress') openProgressGoalModal(null);
-  else if (type === 'habit') alert('habitGoal jeszcze nie zaimplementowany — niedługo dorzucę 😉');
-});
+document.addEventListener('click', (e)=>{ if(!dom.addSplit.contains(e.target)) closeDropdown(); });
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeDropdown(); closeAllModals(); } });
 
-// close dropdown on outside click
-document.addEventListener('click', (e) => {
-  if (!dom.addSplit.contains(e.target)) closeAddDropdown();
-});
+/* categories */
+function refreshCategoriesIn(sel, selected=''){ if(!sel) return; sel.innerHTML = '<option value=\"\">(brak)</option>'; categories.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; if(c===selected) o.selected=true; sel.appendChild(o); }); const add=document.createElement('option'); add.value='__new'; add.textContent='➕ Dodaj nową kategorię'; sel.appendChild(add); }
 
-// esc closes dropdown + modals
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    closeAddDropdown();
-    closeAllModals();
-  }
-});
-
-/* Helpers for categories */
-function refreshSimpleCategories(selected = '') {
-  const sel = dom.simpleGoalCategory;
-  if (!sel) return;
-  sel.innerHTML = '<option value="">(brak)</option>';
-  categories.forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat;
-    opt.textContent = cat;
-    if (cat === selected) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  const addOpt = document.createElement('option');
-  addOpt.value = '__new';
-  addOpt.textContent = '➕ Dodaj nową kategorię';
-  sel.appendChild(addOpt);
-}
-function refreshProgressCategories(selected = '') {
-  const sel = dom.progressGoalCategory;
-  if (!sel) return;
-  sel.innerHTML = '<option value="">(brak)</option>';
-  categories.forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat;
-    opt.textContent = cat;
-    if (cat === selected) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  const addOpt = document.createElement('option');
-  addOpt.value = '__new';
-  addOpt.textContent = '➕ Dodaj nową kategorię';
-  sel.appendChild(addOpt);
-}
-
-/* RENDER */
-function clearGrid() { dom.simpleGoalGrid.innerHTML = ''; }
-function renderAllGoals() {
+/* render */
+function clearGrid(){ dom.goalsGrid.innerHTML = ''; }
+function renderAll(){
   clearGrid();
-  simpleGoals.forEach((g, i) => {
+  goals.forEach((g, idx)=>{
     const card = document.createElement('div');
     card.className = 'card' + (g.done ? ' card-done' : '');
 
-    const title = document.createElement('h3');
-    title.textContent = g.title;
-    card.appendChild(title);
+    const h = document.createElement('h3'); h.textContent = g.title || '(bez tytułu)';
+    card.appendChild(h);
 
-    const desc = document.createElement('p');
-    desc.textContent = g.desc || '';
-    card.appendChild(desc);
+    if (g.desc) { const p=document.createElement('p'); p.textContent=g.desc; card.appendChild(p); }
 
-    const cat = document.createElement('div');
-    cat.className = 'category';
-    cat.textContent = g.category || '(brak kategorii)';
-    card.appendChild(cat);
+    const meta = document.createElement('div'); meta.className='meta';
+    const left = document.createElement('div'); left.textContent = g.category || '';
+    const right = document.createElement('div');
+    if (g.type==='simpleGoal' && g.deadline) right.textContent = '📅 ' + g.deadline;
+    meta.appendChild(left); meta.appendChild(right);
+    card.appendChild(meta);
 
-    if (g.type === 'progressGoal') {
-      const progressBar = document.createElement('div');
-      progressBar.className = 'progress-bar';
-      const fill = document.createElement('div');
-      fill.className = 'progress-fill';
-      fill.style.width = (g.progress || 0) + '%';
-      progressBar.appendChild(fill);
-      card.appendChild(progressBar);
-
-      const status = document.createElement('div');
-      status.className = 'status';
-      status.textContent = `Postęp: ${g.progress || 0}%`;
-      card.appendChild(status);
-    } else {
-      const status = document.createElement('div');
-      status.className = 'status';
-      status.textContent = g.done ? '✅ Ukończone' : '❌ Nieukończone';
+    // type-specific
+    if (g.type==='progressGoal') {
+      const pb = document.createElement('div'); pb.className='progress-bar';
+      const fill = document.createElement('div'); fill.className='progress-fill'; fill.style.width = (g.progress||0)+'%';
+      pb.appendChild(fill); card.appendChild(pb);
+      const st = document.createElement('div'); st.className='meta'; st.textContent = `Postęp: ${g.progress||0}%`; card.appendChild(st);
+    } else if (g.type==='habitGoal') {
+      const dots = document.createElement('div'); dots.className='habit-dots';
+      const last7 = getLastNDates(7);
+      last7.forEach(date=>{
+        const dot = document.createElement('div'); dot.className='habit-dot';
+        if (g.history && g.history[date]) { dot.classList.add('done'); dot.textContent='✓'; }
+        dot.title = date;
+        dot.addEventListener('click', ()=>{ toggleHabit(g.id, date); });
+        dots.appendChild(dot);
+      });
+      card.appendChild(dots);
+    } else if (g.type==='streakGoal') {
+      const base = g.lastFail || g.startDate || g.createdAt || todayStr();
+      const current = Math.max(0, daysBetween(base, todayStr()));
+      const info = document.createElement('div'); info.className='streak-info';
+      const count = document.createElement('div'); count.className='streak-count'; count.textContent = current;
+      const label = document.createElement('div'); label.textContent = 'dni w serii';
+      info.appendChild(count); info.appendChild(label);
+      card.appendChild(info);
+      if (g.bestStreak) { const best = document.createElement('div'); best.className='meta'; best.textContent = `Najlepsza seria: ${g.bestStreak}`; card.appendChild(best); }
+      const fail = document.createElement('button'); fail.className='fail-btn'; fail.textContent='Przełamałem się ❌';
+      fail.addEventListener('click', ()=>{ recordFail(g.id); });
+      card.appendChild(fail);
+    } else if (g.type==='simpleGoal') {
+      const status = document.createElement('div'); status.className='meta'; status.textContent = g.done ? '✅ Ukończone' : '❌ Nieukończone';
       card.appendChild(status);
     }
 
-    const actions = document.createElement('div');
-    actions.className = 'actions';
-
-    const doneBtn = document.createElement('button');
-    doneBtn.type = 'button';
-    doneBtn.title = 'Oznacz jako ukończone/nie';
-    doneBtn.textContent = g.done ? '✅' : '☑️';
-    doneBtn.onclick = () => {
-      g.done = !g.done;
-      saveData();
-      document.dispatchEvent(new Event('simpleDataChanged'));
-    };
-
-    const editBtn = document.createElement('button');
-    editBtn.type = 'button';
-    editBtn.title = 'Edytuj';
-    editBtn.textContent = '✏️';
-    editBtn.onclick = () => {
-      if (g.type === 'progressGoal') openProgressGoalModal(i);
-      else openSimpleGoalModal(i);
-    };
-
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.title = 'Usuń';
-    delBtn.textContent = '🗑️';
-    delBtn.onclick = () => {
-      const ok = confirm(`Usunąć cel: "${g.title}"?`);
-      if (ok) { simpleGoals.splice(i, 1); saveData(); document.dispatchEvent(new Event('simpleDataChanged')); }
-    };
-
-    actions.appendChild(doneBtn);
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
+    // actions
+    const actions = document.createElement('div'); actions.className='actions';
+    if (g.type==='simpleGoal' || g.type==='progressGoal') {
+      const doneBtn = document.createElement('button'); doneBtn.textContent = g.done ? '✅' : '☑️'; doneBtn.title='Oznacz jako ukończone/nie';
+      doneBtn.addEventListener('click', ()=>{ g.done = !g.done; save(); renderAll(); });
+      actions.appendChild(doneBtn);
+    }
+    const editBtn = document.createElement('button'); editBtn.textContent='✏️'; editBtn.title='Edytuj';
+    editBtn.addEventListener('click', ()=>{ openModalForType(g.type, idx); });
+    const delBtn = document.createElement('button'); delBtn.textContent='🗑️'; delBtn.title='Usuń';
+    delBtn.addEventListener('click', ()=>{ if(confirm(`Usunąć "${g.title}"?`)){ goals.splice(idx,1); save(); renderAll(); } });
+    actions.appendChild(editBtn); actions.appendChild(delBtn);
 
     card.appendChild(actions);
-    dom.simpleGoalGrid.appendChild(card);
+    dom.goalsGrid.appendChild(card);
   });
 }
 
-/* SIMPLE GOAL MODAL */
-let editSimpleIndex = null;
-function openSimpleGoalModal(index = null) {
+/* ========== Stats computations & rendering ========== */
+
+function computeStats() {
+  const total = goals.length;
+  const completed = goals.filter(g => !!g.done).length;
+
+  const countsByType = goals.reduce((acc, g) => {
+    acc[g.type] = (acc[g.type] || 0) + 1; return acc;
+  }, {});
+
+  // avg progress for progressGoal
+  const progressGoals = goals.filter(g => g.type === 'progressGoal');
+  const avgProgress = progressGoals.length ? Math.round(progressGoals.reduce((s,g)=>s+(g.progress||0),0)/progressGoals.length) : null;
+
+  // habit completion rate over last 7 days (global)
+  const last7 = getLastNDates(7);
+  let habitDone = 0, habitTotal = 0;
+  goals.filter(g=>g.type==='habitGoal').forEach(g=>{
+    last7.forEach(d=>{
+      if (g.history && typeof g.history[d] !== 'undefined') {
+        habitTotal++;
+        if (g.history[d]) habitDone++;
+      }
+    });
+  });
+  const habitRate = habitTotal ? Math.round((habitDone / habitTotal) * 100) : null;
+
+  // streaks: active count (current>0), best overall, total fails
+  let activeStreaks = 0, bestStreak = 0, totalFails = 0;
+  goals.filter(g=>g.type==='streakGoal').forEach(g=>{
+    const lastFail = (Array.isArray(g.failDates) && g.failDates.length) ? g.failDates[g.failDates.length-1] : (g.lastFail || null);
+    const base = lastFail || (g.startDate || (g.createdAt ? g.createdAt.split('T')[0] : todayStr()));
+    const cur = Math.max(0, daysBetween(base, todayStr()));
+    if (cur > 0) activeStreaks++;
+    if ((g.bestStreak || 0) > bestStreak) bestStreak = g.bestStreak;
+    if (Array.isArray(g.failDates)) totalFails += g.failDates.length;
+    else if (g.lastFail) totalFails += 1;
+  });
+
+  // days active (since earliest createdAt among goals)
+  const createdDates = goals.map(g => g.createdAt).filter(Boolean).map(s => s.split('T')[0]);
+  const earliest = createdDates.length ? createdDates.sort()[0] : null;
+  const daysActive = earliest ? (daysBetween(earliest, todayStr())) : 0;
+
+  // upcoming deadlines within next 7 days
+  const upcoming = goals
+    .filter(g => g.type === 'simpleGoal' && g.deadline)
+    .map(g => ({ title: g.title, deadline: g.deadline }))
+    .filter(item => {
+      const diff = daysBetween(todayStr(), item.deadline);
+      return diff >= 0 && diff <= 7;
+    })
+    .sort((a,b) => a.deadline.localeCompare(b.deadline));
+
+  // top streaks list (by bestStreak)
+  const topStreaks = goals
+    .filter(g => g.type === 'streakGoal')
+    .map(g => ({ title: g.title, best: g.bestStreak || computeBestStreak(g) || 0 }))
+    .sort((a,b) => b.best - a.best)
+    .slice(0,6);
+
+  return {
+    total, completed, countsByType, avgProgress, habitRate, activeStreaks,
+    bestStreak, totalFails, daysActive, upcoming, topStreaks
+  };
+}
+
+function renderStats() {
+  const s = computeStats();
+  document.getElementById('statTotal').textContent = s.total;
+  document.getElementById('statCompleted').textContent = s.completed;
+  document.getElementById('statActiveStreaks').textContent = s.activeStreaks;
+  document.getElementById('statBestStreak').textContent = s.bestStreak || 0;
+
+  document.getElementById('statAvgProgress').textContent = s.avgProgress === null ? '—' : s.avgProgress + '%';
+  document.getElementById('statHabitRate').textContent = s.habitRate === null ? '—' : s.habitRate + '%';
+  document.getElementById('statDaysActive').textContent = s.daysActive;
+  document.getElementById('statTotalFails').textContent = s.totalFails;
+
+  // upcoming deadlines
+  const upEl = document.querySelector('#statUpcomingDeadlines ul');
+  upEl.innerHTML = '';
+  if (s.upcoming.length === 0) {
+    const li = document.createElement('li'); li.textContent = 'Brak w ciągu 7 dni'; upEl.appendChild(li);
+  } else {
+    s.upcoming.forEach(item => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${item.title}</span><small>${item.deadline}</small>`;
+      upEl.appendChild(li);
+    });
+  }
+
+  // top streaks
+  const topEl = document.querySelector('#statTopStreaks ul');
+  topEl.innerHTML = '';
+  if (s.topStreaks.length === 0) {
+    const li = document.createElement('li'); li.textContent = 'Brak streaków'; topEl.appendChild(li);
+  } else {
+    s.topStreaks.forEach(t => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${t.title}</span><small>${t.best} dni</small>`;
+      topEl.appendChild(li);
+    });
+  }
+}
+
+/* Ensure stats refresh together with main render */
+const originalRenderAll = renderAll;
+renderAll = function(...args) {
+  originalRenderAll.apply(this, args);
+  // safe-guard: element might not exist during init
+  if (document.getElementById('statTotal')) renderStats();
+};
+
+// call once on load if needed
+// renderStats();  // not necessary if renderAll runs on init
+
+
+/* utilities */
+function getLastNDates(n){ const arr=[]; for(let i=n-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); arr.push(d.toISOString().split('T')[0]); } return arr; }
+function toggleHabit(goalId,dateStr){ const g = goals.find(x=>x.id===goalId); if(!g) return; g.history = g.history || {}; g.history[dateStr] = !g.history[dateStr]; save(); renderAll(); }
+function recordFail(goalId){ const g = goals.find(x=>x.id===goalId); if(!g) return; const base = g.lastFail || g.startDate || g.createdAt || todayStr(); const cur = Math.max(0, daysBetween(base, todayStr())); g.bestStreak = Math.max(g.bestStreak||0, cur); g.lastFail = todayStr(); save(); renderAll(); }
+
+/* modals open/close */
+function openModalBg(bg){ bg.classList.add('open'); bg.setAttribute('aria-hidden','false'); }
+function closeModalBg(bg){ bg.classList.remove('open'); bg.setAttribute('aria-hidden','true'); }
+function closeAllModals(){ [dom.simpleBg, dom.progressBg, dom.habitBg, dom.streakBg].forEach(bg=>bg&&closeModalBg(bg)); }
+
+/* open modals */
+let editSimpleIndex=null, editProgressIndex=null, editHabitIndex=null, editStreakIndex=null;
+
+function openSimpleModal(index=null){
   editSimpleIndex = index;
-  dom.simpleGoalModalBg.style.display = 'flex';
-  dom.simpleGoalModalBg.setAttribute('aria-hidden', 'false');
-
-  if (index === null) {
-    dom.simpleGoalModalTitle.textContent = 'Dodaj simpleGoal';
-    dom.simpleGoalTitle.value = '';
-    dom.simpleGoalDesc.value = '';
-    dom.newSimpleCategoryInput.classList.add('hidden');
-    refreshSimpleCategories();
-  } else {
-    const g = simpleGoals[index];
-    if (!g) return;
-    dom.simpleGoalModalTitle.textContent = 'Edytuj simpleGoal';
-    dom.simpleGoalTitle.value = g.title;
-    dom.simpleGoalDesc.value = g.desc || '';
-    dom.newSimpleCategoryInput.classList.add('hidden');
-    refreshSimpleCategories(g.category);
-  }
-  setTimeout(() => dom.simpleGoalTitle.focus(), 50);
+  refreshCategoriesIn(dom.simpleCategory, index!==null ? goals[index].category : '');
+  dom.newSimpleCat.classList.add('hidden');
+  if(index===null){ dom.simpleTitle.value=''; dom.simpleDesc.value=''; dom.simpleDeadline.value=''; openModalBg(dom.simpleBg); }
+  else { const g=goals[index]; dom.simpleTitle.value=g.title||''; dom.simpleDesc.value=g.desc||''; dom.simpleDeadline.value=g.deadline||''; openModalBg(dom.simpleBg); }
 }
 
-function closeAllModals() {
-  dom.simpleGoalModalBg.style.display = 'none';
-  dom.simpleGoalModalBg.setAttribute('aria-hidden', 'true');
-  dom.progressGoalModalBg.style.display = 'none';
-  dom.progressGoalModalBg.setAttribute('aria-hidden', 'true');
-}
-
-dom.simpleGoalModalBg.addEventListener('click', (e) => { if (e.target === dom.simpleGoalModalBg) closeAllModals(); });
-dom.simpleGoalCategory.addEventListener('change', () => {
-  if (dom.simpleGoalCategory.value === '__new') { dom.newSimpleCategoryInput.classList.remove('hidden'); dom.newSimpleCategoryInput.focus(); }
-  else dom.newSimpleCategoryInput.classList.add('hidden');
-});
-dom.saveSimpleGoalBtn.addEventListener('click', () => {
-  const title = dom.simpleGoalTitle.value.trim();
-  const desc = dom.simpleGoalDesc.value.trim();
-  let category = dom.simpleGoalCategory.value;
-  if (category === '__new') {
-    const newCat = dom.newSimpleCategoryInput.value.trim();
-    if (newCat) { category = newCat; if (!categories.includes(newCat)) categories.push(newCat); } else category = '';
-  }
-  if (!title) { alert('Tytuł jest wymagany.'); return; }
-  const payload = { type: 'simpleGoal', title, desc, category, done: false };
-  if (editSimpleIndex === null) simpleGoals.push(payload); else { payload.done = simpleGoals[editSimpleIndex].done || false; simpleGoals[editSimpleIndex] = payload; }
-  saveData();
-  document.dispatchEvent(new Event('simpleDataChanged'));
-  closeAllModals();
-});
-
-/* PROGRESS GOAL MODAL */
-let editProgressIndex = null;
-function openProgressGoalModal(index = null) {
+function openProgressModal(index=null){
   editProgressIndex = index;
-  dom.progressGoalModalBg.style.display = 'flex';
-  dom.progressGoalModalBg.setAttribute('aria-hidden', 'false');
-
-  if (index === null) {
-    dom.progressGoalModalTitle.textContent = 'Dodaj progressGoal';
-    dom.progressGoalTitle.value = '';
-    dom.progressGoalDesc.value = '';
-    dom.newProgressCategoryInput.classList.add('hidden');
-    dom.progressGoalRange.value = 0;
-    dom.progressGoalValue.textContent = '0%';
-    refreshProgressCategories();
-  } else {
-    const g = simpleGoals[index];
-    if (!g) return;
-    dom.progressGoalModalTitle.textContent = 'Edytuj progressGoal';
-    dom.progressGoalTitle.value = g.title;
-    dom.progressGoalDesc.value = g.desc || '';
-    dom.newProgressCategoryInput.classList.add('hidden');
-    dom.progressGoalRange.value = g.progress || 0;
-    dom.progressGoalValue.textContent = (g.progress || 0) + '%';
-    refreshProgressCategories(g.category);
-  }
-  setTimeout(() => dom.progressGoalTitle.focus(), 50);
+  refreshCategoriesIn(dom.progressCategory, index!==null ? goals[index].category : '');
+  dom.newProgressCat.classList.add('hidden');
+  if(index===null){ dom.progressTitle.value=''; dom.progressDesc.value=''; dom.progressRange.value=0; dom.progressValue.textContent='0%'; openModalBg(dom.progressBg); }
+  else { const g=goals[index]; dom.progressTitle.value=g.title||''; dom.progressDesc.value=g.desc||''; dom.progressRange.value=g.progress||0; dom.progressValue.textContent=(g.progress||0)+'%'; openModalBg(dom.progressBg); }
 }
-dom.progressGoalModalBg.addEventListener('click', (e) => { if (e.target === dom.progressGoalModalBg) closeAllModals(); });
-dom.progressGoalCategory.addEventListener('change', () => {
-  if (dom.progressGoalCategory.value === '__new') { dom.newProgressCategoryInput.classList.remove('hidden'); dom.newProgressCategoryInput.focus(); }
-  else dom.newProgressCategoryInput.classList.add('hidden');
-});
-dom.progressGoalRange.addEventListener('input', () => { dom.progressGoalValue.textContent = dom.progressGoalRange.value + '%'; });
-dom.saveProgressGoalBtn.addEventListener('click', () => {
-  const title = dom.progressGoalTitle.value.trim();
-  const desc = dom.progressGoalDesc.value.trim();
-  let category = dom.progressGoalCategory.value;
-  const progress = parseInt(dom.progressGoalRange.value, 10) || 0;
-  if (category === '__new') {
-    const newCat = dom.newProgressCategoryInput.value.trim();
-    if (newCat) { category = newCat; if (!categories.includes(newCat)) categories.push(newCat); } else category = '';
-  }
-  if (!title) { alert('Tytuł jest wymagany.'); return; }
-  const payload = { type: 'progressGoal', title, desc, category, progress, done: progress >= 100 };
-  if (editProgressIndex === null) simpleGoals.push(payload); else simpleGoals[editProgressIndex] = payload;
-  saveData();
-  document.dispatchEvent(new Event('simpleDataChanged'));
-  closeAllModals();
+
+function openHabitModal(index=null){
+  editHabitIndex = index;
+  refreshCategoriesIn(dom.habitCategory, index!==null ? goals[index].category : '');
+  dom.newHabitCat.classList.add('hidden');
+  if(index===null){ dom.habitTitle.value=''; dom.habitDesc.value=''; openModalBg(dom.habitBg); }
+  else { const g=goals[index]; dom.habitTitle.value=g.title||''; dom.habitDesc.value=g.desc||''; openModalBg(dom.habitBg); }
+}
+
+function openStreakModal(index=null){
+  editStreakIndex = index;
+  refreshCategoriesIn(dom.streakCategory, index!==null ? goals[index].category : '');
+  dom.newStreakCat.classList.add('hidden');
+  if(index===null){ dom.streakTitle.value=''; dom.streakDesc.value=''; dom.streakStartDate.value=''; openModalBg(dom.streakBg); }
+  else { const g=goals[index]; dom.streakTitle.value=g.title||''; dom.streakDesc.value=g.desc||''; dom.streakStartDate.value=g.startDate||''; openModalBg(dom.streakBg); }
+}
+
+function openModalForType(type, idx){ if(type==='simpleGoal') openSimpleModal(idx); else if(type==='progressGoal') openProgressModal(idx); else if(type==='habitGoal') openHabitModal(idx); else if(type==='streakGoal') openStreakModal(idx); }
+
+/* category select change handlers */
+dom.simpleCategory && dom.simpleCategory.addEventListener('change', ()=>{ if(dom.simpleCategory.value==='__new'){ dom.newSimpleCat.classList.remove('hidden'); dom.newSimpleCat.focus(); } else dom.newSimpleCat.classList.add('hidden'); });
+dom.progressCategory && dom.progressCategory.addEventListener('change', ()=>{ if(dom.progressCategory.value==='__new'){ dom.newProgressCat.classList.remove('hidden'); dom.newProgressCat.focus(); } else dom.newProgressCat.classList.add('hidden'); });
+dom.habitCategory && dom.habitCategory.addEventListener('change', ()=>{ if(dom.habitCategory.value==='__new'){ dom.newHabitCat.classList.remove('hidden'); dom.newHabitCat.focus(); } else dom.newHabitCat.classList.add('hidden'); });
+dom.streakCategory && dom.streakCategory.addEventListener('change', ()=>{ if(dom.streakCategory.value==='__new'){ dom.newStreakCat.classList.remove('hidden'); dom.newStreakCat.focus(); } else dom.newStreakCat.classList.add('hidden'); });
+
+/* save handlers */
+dom.saveSimpleBtn && dom.saveSimpleBtn.addEventListener('click', ()=>{
+  const title = dom.simpleTitle.value.trim(); const desc = dom.simpleDesc.value.trim();
+  let category = dom.simpleCategory.value; if(category==='__new'){ const c=dom.newSimpleCat.value.trim(); if(c){ category=c; if(!categories.includes(c)) categories.push(c);} else category=''; }
+  const deadline = dom.simpleDeadline.value || null; if(!title){ alert('Tytuł wymagany'); return; }
+  const now = new Date().toISOString();
+  if(editSimpleIndex===null){ const obj={ id: genId(), type:'simpleGoal', title, desc, category, deadline, done:false, createdAt:now }; goals.push(obj); }
+  else { const g=goals[editSimpleIndex]; g.title=title; g.desc=desc; g.category=category; g.deadline=deadline; }
+  save(); closeModalBg(dom.simpleBg); renderAll();
 });
 
-/* INIT */
-function initApp() {
-  dom.logoutBtn.addEventListener('click', () => { alert('Wylogowano! (localStorage wyczyszczone)'); localStorage.clear(); window.location.reload(); });
-  document.addEventListener('simpleDataChanged', () => { refreshSimpleCategories(); refreshProgressCategories(); renderAllGoals(); });
-  loadData();
-  refreshSimpleCategories();
-  refreshProgressCategories();
-  renderAllGoals();
-  // ensure dropdown closes when window loses focus
-  window.addEventListener('blur', () => closeAddDropdown());
+dom.progressRange && dom.progressRange.addEventListener('input', ()=>{ dom.progressValue.textContent = dom.progressRange.value + '%'; });
+dom.saveProgressBtn && dom.saveProgressBtn.addEventListener('click', ()=>{
+  const title = dom.progressTitle.value.trim(); const desc = dom.progressDesc.value.trim();
+  let category = dom.progressCategory.value; if(category==='__new'){ const c=dom.newProgressCat.value.trim(); if(c){ category=c; if(!categories.includes(c)) categories.push(c);} else category=''; }
+  const progress = parseInt(dom.progressRange.value,10) || 0; if(!title){ alert('Tytuł wymagany'); return; }
+  const now = new Date().toISOString();
+  if(editProgressIndex===null){ const obj={ id:genId(), type:'progressGoal', title, desc, category, progress, done: progress>=100, createdAt:now }; goals.push(obj); }
+  else { const g=goals[editProgressIndex]; g.title=title; g.desc=desc; g.category=category; g.progress=progress; g.done = progress>=100; }
+  save(); closeModalBg(dom.progressBg); renderAll();
+});
+
+dom.saveHabitBtn && dom.saveHabitBtn.addEventListener('click', ()=>{
+  const title = dom.habitTitle.value.trim(); const desc = dom.habitDesc.value.trim();
+  let category = dom.habitCategory.value; if(category==='__new'){ const c=dom.newHabitCat.value.trim(); if(c){ category=c; if(!categories.includes(c)) categories.push(c);} else category=''; }
+  if(!title){ alert('Tytuł wymagany'); return; }
+  const now = new Date().toISOString();
+  if(editHabitIndex===null){ const obj={ id:genId(), type:'habitGoal', title, desc, category, history:{}, createdAt:now }; goals.push(obj); }
+  else { const g=goals[editHabitIndex]; g.title=title; g.desc=desc; g.category=category; }
+  save(); closeModalBg(dom.habitBg); renderAll();
+});
+
+dom.saveStreakBtn && dom.saveStreakBtn.addEventListener('click', ()=>{
+  const title = dom.streakTitle.value.trim(); const desc = dom.streakDesc.value.trim();
+  let category = dom.streakCategory.value; if(category==='__new'){ const c=dom.newStreakCat.value.trim(); if(c){ category=c; if(!categories.includes(c)) categories.push(c);} else category=''; }
+  const start = dom.streakStartDate.value || todayStr();
+  if(!title){ alert('Tytuł wymagany'); return; }
+  const now = new Date().toISOString();
+  if(editStreakIndex===null){ const obj={ id:genId(), type:'streakGoal', title, desc, category, startDate:start, lastFail:null, bestStreak:0, createdAt:now }; goals.push(obj); }
+  else { const g=goals[editStreakIndex]; g.title=title; g.desc=desc; g.category=category; g.startDate=start; }
+  save(); closeModalBg(dom.streakBg); renderAll();
+});
+
+/* close modals by clicking background */
+[dom.simpleBg, dom.progressBg, dom.habitBg, dom.streakBg].forEach(bg=>{ if(!bg) return; bg.addEventListener('click', (e)=>{ if(e.target===bg) closeModalBg(bg); }); });
+
+/* init */
+function init(){
+  load(); renderAll();
+  dom.logoutBtn && dom.logoutBtn.addEventListener('click', ()=>{ if(confirm('Wylogować i wyczyścić dane lokalne?')){ localStorage.clear(); location.reload(); } });
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initApp); else initApp();
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
