@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Logowanie - Goal Tracker</title>
+  <style>
+    :root{
+      --bg: #121212;
+      --card: #1e1e1e;
+      --card-alt: #2a2a2a;
+      --muted: #aaa;
+      --accent1: #7b1fa2;
+      --accent2: #3f51b5;
+      --accent-contrast: #b388ff;
+      --text: #eee;
+      --input-bg: #2c2c2c;
+      --glass-shadow: 0 4px 12px rgba(0,0,0,0.7);
+      --soft-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      --radius-lg: 12px;
+      --radius-sm: 8px;
+      --focus-color: rgba(123,31,162,0.25);
+    }
+
+    * { box-sizing: border-box; }
+    
+    html, body { height: 100%; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, "Helvetica Neue", Arial;
+      background: linear-gradient(135deg, var(--bg) 0%, #1a1a2e 50%, #16213e 100%);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .login-container {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: var(--glass-shadow);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .logo-section {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .logo {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .logo-text {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent-contrast);
+      margin-bottom: 4px;
+    }
+
+    .logo-subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--input-bg);
+      border: 2px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent1);
+      box-shadow: 0 0 0 3px var(--focus-color);
+    }
+
+    .form-input::placeholder {
+      color: var(--muted);
+    }
+
+    .form-input:invalid:not(:placeholder-shown) {
+      border-color: rgba(244, 67, 54, 0.6);
+    }
+
+    .form-input:valid:not(:placeholder-shown) {
+      border-color: rgba(76, 175, 80, 0.6);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      border: none;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: var(--soft-shadow);
+      margin-bottom: 16px;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(123,31,162,0.4);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+
+    .login-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .additional-options {
+      margin-top: 24px;
+    }
+
+    .form-checkbox-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .form-checkbox {
+      margin-right: 8px;
+      accent-color: var(--accent1);
+    }
+
+    .checkbox-label {
+      font-size: 0.9rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .forgot-password {
+      text-align: center;
+      margin: 16px 0;
+    }
+
+    .forgot-password a {
+      color: var(--accent-contrast);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+
+    .forgot-password a:hover {
+      color: var(--accent1);
+      text-decoration: underline;
+    }
+
+    .divider {
+      text-align: center;
+      margin: 24px 0;
+      position: relative;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      z-index: 1;
+    }
+
+    .divider span {
+      background: var(--card);
+      padding: 0 16px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .register-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .register-link a {
+      color: var(--accent-contrast);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s ease;
+    }
+
+    .register-link a:hover {
+      color: var(--accent1);
+    }
+
+    /* Error/Success messages from server */
+    .message {
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+
+    .message.error {
+      background: rgba(244, 67, 54, 0.1);
+      border: 1px solid rgba(244, 67, 54, 0.3);
+      color: #ff6b6b;
+    }
+
+    .message.success {
+      background: rgba(76, 175, 80, 0.1);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      color: #81c784;
+    }
+
+    .message.info {
+      background: rgba(3, 169, 244, 0.1);
+      border: 1px solid rgba(3, 169, 244, 0.3);
+      color: #64b5f6;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 480px) {
+      .login-container {
+        padding: 24px 20px;
+        margin: 10px;
+      }
+      
+      .logo-text {
+        font-size: 1.5rem;
+      }
+    }
+
+    /* Animations */
+    .login-container {
+      animation: fadeInUp 0.6s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Loading state when form is submitted */
+    .form-submitting .login-btn {
+      position: relative;
+      color: transparent;
+    }
+
+    .form-submitting .login-btn::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      top: 50%;
+      left: 50%;
+      margin-left: -8px;
+      margin-top: -8px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Focus visible for accessibility */
+    .login-btn:focus-visible {
+      outline: 2px solid var(--accent-contrast);
+      outline-offset: 2px;
+    }
+
+    .form-input:focus-visible {
+      outline: none;
+    }
+
+    a:focus-visible {
+      outline: 2px solid var(--accent-contrast);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <!-- Logo Section -->
+    <div class="logo-section">
+      <div class="logo">🎯</div>
+      <div class="logo-text">GoalTracker</div>
+      <div class="logo-subtitle">Zarządzaj swoimi celami</div>
+    </div>
+
+    <!-- Server Messages (populated by your backend) -->
+    <!-- Example error message - remove/populate from server -->
+    <!-- <div class="message error">Nieprawidłowy email lub hasło</div> -->
+    <!-- <div class="message success">Zostałeś pomyślnie wylogowany</div> -->
+    <!-- <div class="message info">Sprawdź email i kliknij link aktywacyjny</div> -->
+
+    <!-- Login Form -->
+    <form method="POST" action="/login" id="loginForm">
+      <div class="form-group">
+        <label for="email" class="form-label">Email</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email"
+          class="form-input" 
+          placeholder="Wprowadź swój email"
+          required
+          autocomplete="email"
+          value=""
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Hasło</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password"
+          class="form-input" 
+          placeholder="Wprowadź swoje hasło"
+          required
+          autocomplete="current-password"
+          minlength="6"
+        />
+      </div>
+
+      <div class="additional-options">
+        <div class="form-checkbox-group">
+          <input 
+            type="checkbox" 
+            id="remember" 
+            name="remember"
+            class="form-checkbox"
+          />
+          <label for="remember" class="checkbox-label">Zapamiętaj mnie</label>
+        </div>
+      </div>
+
+      <button type="submit" class="login-btn">
+        Zaloguj się
+      </button>
+    </form>
+
+    <div class="forgot-password">
+      <a href="/forgot-password">Zapomniałeś hasła?</a>
+    </div>
+
+    <div class="divider">
+      <span>lub</span>
+    </div>
+
+    <div class="register-link">
+      <p>Nie masz konta? <a href="/register">Zarejestruj się</a></p>
+    </div>
+  </div>
+
+  <script>
+    // Minimal JavaScript only for UX enhancement - form still works without it
+    (function() {
+      const form = document.getElementById('loginForm');
+      
+      // Add loading state on form submission
+      form.addEventListener('submit', function() {
+        form.classList.add('form-submitting');
+      });
+
+      // Auto-focus first empty field
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
+      
+      if (!emailInput.value) {
+        emailInput.focus();
+      } else if (!passwordInput.value) {
+        passwordInput.focus();
+      }
+    })();
+  </script>
+</body>
+</html>
