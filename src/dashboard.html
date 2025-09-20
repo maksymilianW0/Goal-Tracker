@@ -3,8 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Goal Tracker — multi types</title>
+  <title>Goal Tracker – multi types</title>
   <link rel="stylesheet" href="main.css" />
+  <script>
+    (function(){
+      const R = Date;          // oryginalny Date (nie ruszaj)
+      let o = 0, f = Date.parse('2025-09-25 10:00:00');     // <-- TUTAJ MANIPULUJ: o = offset(ms), f = fixed(timestamp)
+                              // np. o = 3600000  (=> +1h)
+                              //     f = Date.parse('2000-01-01T00:00:00Z') (=> zamrożony czas)
+
+      const now = ()=> f!==null ? Number(f) : R.now() + Number(o);
+
+      function F(...a){
+        if(!new.target) return a.length ? R.apply(null,a) : new R(now()).toString();
+        return a.length ? Reflect.construct(R, a, F) : Reflect.construct(R, [now()], F);
+      }
+
+      F.now = ()=> now();
+      F.parse = R.parse.bind(R);
+      F.UTC = R.UTC.bind(R);
+      F.prototype = R.prototype;
+      Object.defineProperty(F, 'toString', { value: ()=> R.toString() });
+
+      window.Date = F;
+
+      // publiczne API (możesz sterować też z konsoli)
+      window.__dateMock = {
+        setOffset(ms){ o = Number(ms) || 0; f = null; return {offset:o, fixed:f}; },
+        setNow(v){ f = (v instanceof R) ? v.getTime() : Number(new R(v).getTime()); return {offset:o, fixed:f}; },
+        clear(){ o = 0; f = null; return {offset:o, fixed:f}; },
+        restore(){ window.Date = R; try{ delete window.__dateMock }catch{}; return true; },
+        info(){ return {offset:o, fixed:f, now: now()}; }
+      };
+    })();
+  </script>
 </head>
 <body>
   <nav id="navbar">
@@ -26,64 +58,143 @@
         <div class="add-dropdown-menu" id="addGoalMenu" role="menu" aria-hidden="true">
           <button class="menu-item" data-type="simple" role="menuitem">➕ simpleGoal</button>
           <button class="menu-item" data-type="progress" role="menuitem">📈 progressGoal</button>
-          <button class="menu-item" data-type="habit" role="menuitem">🔁 habitGoal</button>
+          <button class="menu-item" data-type="habit" role="menuitem">📝 habitGoal</button>
           <button class="menu-item" data-type="streak" role="menuitem">🚫 streakGoal (sober-style)</button>
         </div>
       </div>
     </div>
 
-    <!-- STATS PANEL -->
-  <section id="statsPanel" class="stats-panel" aria-live="polite">
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-value" id="statTotal">0</div>
-        <div class="stat-label">Wszystkie cele</div>
+    <!-- COMPACT SEARCH & COLLAPSIBLE SECTIONS -->
+    <div class="top-controls">
+      <!-- Always visible compact search -->
+      <div class="compact-search">
+        <div class="search-input-wrapper">
+          <input type="text" id="searchInput" placeholder="🔍 Szukaj celów..." class="search-input" />
+          <button id="clearSearchBtn" class="clear-search-btn" title="Wyczyść wyszukiwanie">✕</button>
+        </div>
+        <div class="search-results-info">
+          <span id="resultsCount">0 celów</span>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-value" id="statCompleted">0</div>
-        <div class="stat-label">Ukończone</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="statActiveStreaks">0</div>
-        <div class="stat-label">Aktywne streaki</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="statBestStreak">0</div>
-        <div class="stat-label">Najdłuższa seria</div>
-      </div>
-    </div>
-
-    <div class="stats-row small">
-      <div class="stat-mini">
-        <div class="mini-label">Średni progress</div>
-        <div class="mini-value" id="statAvgProgress">—</div>
-      </div>
-      <div class="stat-mini">
-        <div class="mini-label">Habit (% ostatnich 7 dni)</div>
-        <div class="mini-value" id="statHabitRate">—</div>
-      </div>
-      <div class="stat-mini">
-        <div class="mini-label">Dni aktywności</div>
-        <div class="mini-value" id="statDaysActive">—</div>
-      </div>
-      <div class="stat-mini">
-        <div class="mini-label">Suma faili</div>
-        <div class="mini-value" id="statTotalFails">0</div>
+      
+      <!-- Collapsible controls -->
+      <div class="control-toggles">
+        <button id="toggleFilters" class="toggle-btn" aria-expanded="false">
+          <span class="toggle-icon">🎛️</span>
+          <span class="toggle-text">Filtry</span>
+          <span class="toggle-arrow">▾</span>
+        </button>
+        <button id="toggleStats" class="toggle-btn" aria-expanded="false">
+          <span class="toggle-icon">📊</span>
+          <span class="toggle-text">Statystyki</span>
+          <span class="toggle-arrow">▾</span>
+        </button>
       </div>
     </div>
 
-    <div class="stats-row lists">
-      <div class="stat-list" id="statUpcomingDeadlines">
-        <div class="list-title">Nadchodzące deadline'y (7 dni)</div>
-        <ul></ul>
+    <!-- COLLAPSIBLE FILTERS SECTION -->
+    <section id="filtersSection" class="collapsible-section filters-section collapsed">
+      <div class="filters-container">
+        <div class="filter-group">
+          <label for="typeFilter" class="filter-label">Typ:</label>
+          <select id="typeFilter" class="filter-select">
+            <option value="">Wszystkie typy</option>
+            <option value="simpleGoal">🎯 Simple Goal</option>
+            <option value="progressGoal">📈 Progress Goal</option>
+            <option value="habitGoal">📝 Habit Goal</option>
+            <option value="streakGoal">🚫 Streak Goal</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="categoryFilter" class="filter-label">Kategoria:</label>
+          <select id="categoryFilter" class="filter-select">
+            <option value="">Wszystkie kategorie</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="statusFilter" class="filter-label">Status:</label>
+          <select id="statusFilter" class="filter-select">
+            <option value="">Wszystkie</option>
+            <option value="completed">✅ Ukończone</option>
+            <option value="active">⏳ Aktywne</option>
+            <option value="overdue">⚠️ Przeterminowane</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="sortFilter" class="filter-label">Sortuj:</label>
+          <select id="sortFilter" class="filter-select">
+            <option value="newest">Najnowsze</option>
+            <option value="oldest">Najstarsze</option>
+            <option value="alphabetical">Alfabetycznie</option>
+            <option value="deadline">Deadline</option>
+            <option value="progress">Postęp</option>
+          </select>
+        </div>
+        
+        <button id="clearFiltersBtn" class="clear-filters-btn">🗑️ Wyczyść filtry</button>
       </div>
-      <div class="stat-list" id="statTopStreaks">
-        <div class="list-title">Top streaki</div>
-        <ul></ul>
+      
+      <div class="active-filters-info">
+        <span id="activeFiltersInfo"></span>
       </div>
-    </div>
-  </section>
+    </section>
 
+    <!-- COLLAPSIBLE STATS PANEL -->
+    <section id="statsSection" class="collapsible-section stats-section collapsed">
+      <div id="statsPanel" class="stats-panel" aria-live="polite">
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-label">Wszystkie cele</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statCompleted">0</div>
+            <div class="stat-label">Ukończone</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statActiveStreaks">0</div>
+            <div class="stat-label">Aktywne streaki</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statBestStreak">0</div>
+            <div class="stat-label">Najdłuższa seria</div>
+          </div>
+        </div>
+
+        <div class="stats-row small">
+          <div class="stat-mini">
+            <div class="mini-label">Średni progress</div>
+            <div class="mini-value" id="statAvgProgress">—</div>
+          </div>
+          <div class="stat-mini">
+            <div class="mini-label">Habit (% ostatnich 7 dni)</div>
+            <div class="mini-value" id="statHabitRate">—</div>
+          </div>
+          <div class="stat-mini">
+            <div class="mini-label">Dni aktywności</div>
+            <div class="mini-value" id="statDaysActive">—</div>
+          </div>
+          <div class="stat-mini">
+            <div class="mini-label">Suma faili</div>
+            <div class="mini-value" id="statTotalFails">0</div>
+          </div>
+        </div>
+
+        <div class="stats-row lists">
+          <div class="stat-list" id="statUpcomingDeadlines">
+            <div class="list-title">Nadchodzące deadline'y (7 dni)</div>
+            <ul></ul>
+          </div>
+          <div class="stat-list" id="statTopStreaks">
+            <div class="list-title">Top streaki</div>
+            <ul></ul>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <div class="grid" id="goalsGrid" aria-live="polite"></div>
   </main>
@@ -158,7 +269,7 @@
     </div>
   </div>
 
-  <!-- StreakGoal Modal (TERAZ Z OPISEM) -->
+  <!-- StreakGoal Modal -->
   <div id="streakGoalModalBg" class="modal-bg" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal" role="document" aria-labelledby="streakGoalModalTitle">
       <h2 id="streakGoalModalTitle">Dodaj streakGoal</h2>

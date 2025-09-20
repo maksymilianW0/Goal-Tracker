@@ -1,5 +1,6 @@
-/* app.js — multi-type goals: simpleGoal, progressGoal, habitGoal, streakGoal
-   poprz. zmiany: streakGoal ma opis; finished goals mają klasę .card-done; logout button style przywrócony */
+/* app.js – multi-type goals: simpleGoal, progressGoal, habitGoal, streakGoal
+   poprz. zmiany: streakGoal ma opis; finished goals mają klasę .card-done; logout button style przywrócony 
+   NAPRAWIONO: błędy w computeBestStreak, renderStats, failDates array handling, collapsible sections */
 'use strict';
 
 const STORAGE_KEY = 'goals_v1';
@@ -20,6 +21,23 @@ const dom = {
   addGoalMenu: document.getElementById('addGoalMenu'),
   goalsGrid: document.getElementById('goalsGrid'),
   logoutBtn: document.getElementById('logoutBtn'),
+
+  // Search & Filters
+  searchInput: document.getElementById('searchInput'),
+  clearSearchBtn: document.getElementById('clearSearchBtn'),
+  typeFilter: document.getElementById('typeFilter'),
+  categoryFilter: document.getElementById('categoryFilter'),
+  statusFilter: document.getElementById('statusFilter'),
+  sortFilter: document.getElementById('sortFilter'),
+  clearFiltersBtn: document.getElementById('clearFiltersBtn'),
+  resultsCount: document.getElementById('resultsCount'),
+  activeFiltersInfo: document.getElementById('activeFiltersInfo'),
+
+  // Collapsible controls
+  toggleFilters: document.getElementById('toggleFilters'),
+  toggleStats: document.getElementById('toggleStats'),
+  filtersSection: document.getElementById('filtersSection'),
+  statsSection: document.getElementById('statsSection'),
 
   // Simple modal
   simpleBg: document.getElementById('simpleGoalModalBg'),
@@ -72,13 +90,231 @@ document.addEventListener('click', (e)=>{ if(!dom.addSplit.contains(e.target)) c
 document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeDropdown(); closeAllModals(); } });
 
 /* categories */
-function refreshCategoriesIn(sel, selected=''){ if(!sel) return; sel.innerHTML = '<option value=\"\">(brak)</option>'; categories.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; if(c===selected) o.selected=true; sel.appendChild(o); }); const add=document.createElement('option'); add.value='__new'; add.textContent='➕ Dodaj nową kategorię'; sel.appendChild(add); }
+function refreshCategoriesIn(sel, selected=''){ if(!sel) return; sel.innerHTML = '<option value="">(brak)</option>'; categories.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; if(c===selected) o.selected=true; sel.appendChild(o); }); const add=document.createElement('option'); add.value='__new'; add.textContent='➕ Dodaj nową kategorię'; sel.appendChild(add); }
+
+function refreshCategoryFilter() {
+  if (!dom.categoryFilter) return;
+  dom.categoryFilter.innerHTML = '<option value="">Wszystkie kategorie</option>';
+  categories.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c;
+    o.textContent = c;
+    dom.categoryFilter.appendChild(o);
+  });
+}
+
+/* ========== SEARCH & FILTER LOGIC ========== */
+let currentFilters = {
+  search: '',
+  type: '',
+  category: '',
+  status: '',
+  sort: 'newest'
+};
+
+let filteredGoals = [];
+
+function applyFiltersAndSort() {
+  // Start with all goals
+  let filtered = [...goals];
+  
+  // Apply search filter
+  if (currentFilters.search.trim()) {
+    const searchTerm = currentFilters.search.toLowerCase();
+    filtered = filtered.filter(g => 
+      (g.title || '').toLowerCase().includes(searchTerm) ||
+      (g.desc || '').toLowerCase().includes(searchTerm) ||
+      (g.category || '').toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  // Apply type filter
+  if (currentFilters.type) {
+    filtered = filtered.filter(g => g.type === currentFilters.type);
+  }
+  
+  // Apply category filter
+  if (currentFilters.category) {
+    filtered = filtered.filter(g => g.category === currentFilters.category);
+  }
+  
+  // Apply status filter
+  if (currentFilters.status === 'completed') {
+    filtered = filtered.filter(g => g.done);
+  } else if (currentFilters.status === 'active') {
+    filtered = filtered.filter(g => !g.done);
+  } else if (currentFilters.status === 'overdue') {
+    const today = todayStr();
+    filtered = filtered.filter(g => 
+      g.type === 'simpleGoal' && 
+      g.deadline && 
+      !g.done && 
+      g.deadline < today
+    );
+  }
+  
+  // Apply sorting
+  switch (currentFilters.sort) {
+    case 'newest':
+      filtered.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      break;
+    case 'oldest':
+      filtered.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+      break;
+    case 'alphabetical':
+      filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      break;
+    case 'deadline':
+      filtered.sort((a, b) => {
+        const aDeadline = a.deadline || '9999-12-31';
+        const bDeadline = b.deadline || '9999-12-31';
+        return aDeadline.localeCompare(bDeadline);
+      });
+      break;
+    case 'progress':
+      filtered.sort((a, b) => (b.progress || 0) - (a.progress || 0));
+      break;
+  }
+  
+  filteredGoals = filtered;
+  renderFilteredGoals();
+  updateResultsInfo();
+}
+
+function updateResultsInfo() {
+  if (!dom.resultsCount) return;
+  
+  const count = filteredGoals.length;
+  const total = goals.length;
+  
+  dom.resultsCount.textContent = count === total ? 
+    `${count} ${count === 1 ? 'cel' : count < 5 ? 'cele' : 'celów'}` :
+    `${count} z ${total}`;
+  
+  // Show active filters info (only in expanded filters section)
+  const activeFilters = [];
+  if (currentFilters.search) activeFilters.push(`"${currentFilters.search}"`);
+  if (currentFilters.type) {
+    const typeNames = {
+      simpleGoal: 'Simple Goal',
+      progressGoal: 'Progress Goal', 
+      habitGoal: 'Habit Goal',
+      streakGoal: 'Streak Goal'
+    };
+    activeFilters.push(typeNames[currentFilters.type]);
+  }
+  if (currentFilters.category) activeFilters.push(currentFilters.category);
+  if (currentFilters.status) {
+    const statusNames = {
+      completed: 'Ukończone',
+      active: 'Aktywne',
+      overdue: 'Przeterminowane'
+    };
+    activeFilters.push(statusNames[currentFilters.status]);
+  }
+  
+  if (dom.activeFiltersInfo) {
+    dom.activeFiltersInfo.textContent = activeFilters.length > 0 ? 
+      `Aktywne filtry: ${activeFilters.join(', ')}` : 'Brak aktywnych filtrów';
+  }
+}
+
+function clearAllFilters() {
+  currentFilters = {
+    search: '',
+    type: '',
+    category: '',
+    status: '',
+    sort: 'newest'
+  };
+  
+  // Update UI
+  if (dom.searchInput) dom.searchInput.value = '';
+  if (dom.typeFilter) dom.typeFilter.value = '';
+  if (dom.categoryFilter) dom.categoryFilter.value = '';
+  if (dom.statusFilter) dom.statusFilter.value = '';
+  if (dom.sortFilter) dom.sortFilter.value = 'newest';
+  
+  applyFiltersAndSort();
+}
+
+/* ========== COLLAPSIBLE SECTIONS LOGIC ========== */
+function toggleSection(button, section) {
+  const isExpanded = button.getAttribute('aria-expanded') === 'true';
+  const newState = !isExpanded;
+  
+  button.setAttribute('aria-expanded', newState);
+  
+  if (newState) {
+    section.classList.remove('collapsed');
+  } else {
+    section.classList.add('collapsed');
+  }
+}
+
+function setupCollapsibleControls() {
+  if (dom.toggleFilters && dom.filtersSection) {
+    dom.toggleFilters.addEventListener('click', () => {
+      toggleSection(dom.toggleFilters, dom.filtersSection);
+    });
+  }
+  
+  if (dom.toggleStats && dom.statsSection) {
+    dom.toggleStats.addEventListener('click', () => {
+      toggleSection(dom.toggleStats, dom.statsSection);
+    });
+  }
+}
+
+/* utilities - NAPRAWIONO computeBestStreak */
+function getLastNDates(n){ const arr=[]; for(let i=n-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); arr.push(d.toISOString().split('T')[0]); } return arr; }
+function toggleHabit(goalId,dateStr){ const g = goals.find(x=>x.id===goalId); if(!g) return; g.history = g.history || {}; g.history[dateStr] = !g.history[dateStr]; save(); renderAll(); }
+
+function computeBestStreak(goal) {
+  if (!goal || goal.type !== 'streakGoal') return 0;
+  
+  // Jeśli mamy już zapisaną najlepszą serię, zwróć ją
+  if (goal.bestStreak && typeof goal.bestStreak === 'number') {
+    return goal.bestStreak;
+  }
+  
+  // W przeciwnym razie policz aktualną serię
+  const startDate = goal.startDate || (goal.createdAt ? goal.createdAt.split('T')[0] : todayStr());
+  const lastFail = goal.lastFail || null;
+  const base = lastFail || startDate;
+  
+  return Math.max(0, daysBetween(base, todayStr()));
+}
+
+function recordFail(goalId){ 
+  const g = goals.find(x=>x.id===goalId); 
+  if(!g) return; 
+  
+  // Inicjalizuj failDates jeśli nie istnieje
+  if (!Array.isArray(g.failDates)) {
+    g.failDates = [];
+  }
+  
+  const base = g.lastFail || g.startDate || (g.createdAt ? g.createdAt.split('T')[0] : todayStr()); 
+  const cur = Math.max(0, daysBetween(base, todayStr())); 
+  g.bestStreak = Math.max(g.bestStreak||0, cur); 
+  g.lastFail = todayStr(); 
+  g.failDates.push(todayStr());
+  
+  save(); 
+  renderAll(); 
+}
 
 /* render */
 function clearGrid(){ dom.goalsGrid.innerHTML = ''; }
-function renderAll(){
+
+function renderFilteredGoals(){
   clearGrid();
-  goals.forEach((g, idx)=>{
+  filteredGoals.forEach((g, originalIdx)=>{
+    // Find original index in goals array
+    const realIdx = goals.findIndex(goal => goal.id === g.id);
+    if (realIdx === -1) return;
+    
     const card = document.createElement('div');
     card.className = 'card' + (g.done ? ' card-done' : '');
 
@@ -112,7 +348,7 @@ function renderAll(){
       });
       card.appendChild(dots);
     } else if (g.type==='streakGoal') {
-      const base = g.lastFail || g.startDate || g.createdAt || todayStr();
+      const base = g.lastFail || g.startDate || (g.createdAt ? g.createdAt.split('T')[0] : todayStr());
       const current = Math.max(0, daysBetween(base, todayStr()));
       const info = document.createElement('div'); info.className='streak-info';
       const count = document.createElement('div'); count.className='streak-count'; count.textContent = current;
@@ -136,18 +372,24 @@ function renderAll(){
       actions.appendChild(doneBtn);
     }
     const editBtn = document.createElement('button'); editBtn.textContent='✏️'; editBtn.title='Edytuj';
-    editBtn.addEventListener('click', ()=>{ openModalForType(g.type, idx); });
+    editBtn.addEventListener('click', ()=>{ openModalForType(g.type, realIdx); });
     const delBtn = document.createElement('button'); delBtn.textContent='🗑️'; delBtn.title='Usuń';
-    delBtn.addEventListener('click', ()=>{ if(confirm(`Usunąć "${g.title}"?`)){ goals.splice(idx,1); save(); renderAll(); } });
+    delBtn.addEventListener('click', ()=>{ if(confirm(`Usunąć "${g.title}"?`)){ goals.splice(realIdx,1); save(); renderAll(); } });
     actions.appendChild(editBtn); actions.appendChild(delBtn);
 
     card.appendChild(actions);
     dom.goalsGrid.appendChild(card);
   });
+  
+  renderStats();
 }
 
-/* ========== Stats computations & rendering ========== */
+function renderAll(){
+  refreshCategoryFilter();
+  applyFiltersAndSort();
+}
 
+/* ========== Stats computations & rendering - NAPRAWIONO ========== */
 function computeStats() {
   const total = goals.length;
   const completed = goals.filter(g => !!g.done).length;
@@ -180,19 +422,27 @@ function computeStats() {
     const base = lastFail || (g.startDate || (g.createdAt ? g.createdAt.split('T')[0] : todayStr()));
     const cur = Math.max(0, daysBetween(base, todayStr()));
     if (cur > 0) activeStreaks++;
-    if ((g.bestStreak || 0) > bestStreak) bestStreak = g.bestStreak;
-    if (Array.isArray(g.failDates)) totalFails += g.failDates.length;
-    else if (g.lastFail) totalFails += 1;
+    
+    // Poprawne obliczanie najlepszej serii
+    const goalBest = computeBestStreak(g);
+    if (goalBest > bestStreak) bestStreak = goalBest;
+    
+    // Poprawne liczenie failów
+    if (Array.isArray(g.failDates)) {
+      totalFails += g.failDates.length;
+    } else if (g.lastFail) {
+      totalFails += 1;
+    }
   });
 
   // days active (since earliest createdAt among goals)
   const createdDates = goals.map(g => g.createdAt).filter(Boolean).map(s => s.split('T')[0]);
   const earliest = createdDates.length ? createdDates.sort()[0] : null;
-  const daysActive = earliest ? (daysBetween(earliest, todayStr())) : 0;
+  const daysActive = earliest ? (daysBetween(earliest, todayStr()) + 1) : 0; // +1 żeby uwzględnić pierwszy dzień
 
   // upcoming deadlines within next 7 days
   const upcoming = goals
-    .filter(g => g.type === 'simpleGoal' && g.deadline)
+    .filter(g => g.type === 'simpleGoal' && g.deadline && !g.done) // nie pokazuj ukończonych
     .map(g => ({ title: g.title, deadline: g.deadline }))
     .filter(item => {
       const diff = daysBetween(todayStr(), item.deadline);
@@ -203,9 +453,10 @@ function computeStats() {
   // top streaks list (by bestStreak)
   const topStreaks = goals
     .filter(g => g.type === 'streakGoal')
-    .map(g => ({ title: g.title, best: g.bestStreak || computeBestStreak(g) || 0 }))
+    .map(g => ({ title: g.title, best: computeBestStreak(g) }))
+    .filter(g => g.best > 0) // tylko te z jakąś serią
     .sort((a,b) => b.best - a.best)
-    .slice(0,6);
+    .slice(0,5);
 
   return {
     total, completed, countsByType, avgProgress, habitRate, activeStreaks,
@@ -214,7 +465,20 @@ function computeStats() {
 }
 
 function renderStats() {
+  // Sprawdź czy elementy istnieją przed próbą aktualizacji
+  const statElements = [
+    'statTotal', 'statCompleted', 'statActiveStreaks', 'statBestStreak',
+    'statAvgProgress', 'statHabitRate', 'statDaysActive', 'statTotalFails'
+  ];
+  
+  const missingElements = statElements.filter(id => !document.getElementById(id));
+  if (missingElements.length > 0) {
+    console.warn('Brakujące elementy statystyk:', missingElements);
+    return;
+  }
+
   const s = computeStats();
+  
   document.getElementById('statTotal').textContent = s.total;
   document.getElementById('statCompleted').textContent = s.completed;
   document.getElementById('statActiveStreaks').textContent = s.activeStreaks;
@@ -227,47 +491,34 @@ function renderStats() {
 
   // upcoming deadlines
   const upEl = document.querySelector('#statUpcomingDeadlines ul');
-  upEl.innerHTML = '';
-  if (s.upcoming.length === 0) {
-    const li = document.createElement('li'); li.textContent = 'Brak w ciągu 7 dni'; upEl.appendChild(li);
-  } else {
-    s.upcoming.forEach(item => {
-      const li = document.createElement('li');
-      li.innerHTML = `<span>${item.title}</span><small>${item.deadline}</small>`;
-      upEl.appendChild(li);
-    });
+  if (upEl) {
+    upEl.innerHTML = '';
+    if (s.upcoming.length === 0) {
+      const li = document.createElement('li'); li.textContent = 'Brak w ciągu 7 dni'; upEl.appendChild(li);
+    } else {
+      s.upcoming.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${item.title}</span><small>${item.deadline}</small>`;
+        upEl.appendChild(li);
+      });
+    }
   }
 
   // top streaks
   const topEl = document.querySelector('#statTopStreaks ul');
-  topEl.innerHTML = '';
-  if (s.topStreaks.length === 0) {
-    const li = document.createElement('li'); li.textContent = 'Brak streaków'; topEl.appendChild(li);
-  } else {
-    s.topStreaks.forEach(t => {
-      const li = document.createElement('li');
-      li.innerHTML = `<span>${t.title}</span><small>${t.best} dni</small>`;
-      topEl.appendChild(li);
-    });
+  if (topEl) {
+    topEl.innerHTML = '';
+    if (s.topStreaks.length === 0) {
+      const li = document.createElement('li'); li.textContent = 'Brak streakóв'; topEl.appendChild(li);
+    } else {
+      s.topStreaks.forEach(t => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${t.title}</span><small>${t.best} dni</small>`;
+        topEl.appendChild(li);
+      });
+    }
   }
 }
-
-/* Ensure stats refresh together with main render */
-const originalRenderAll = renderAll;
-renderAll = function(...args) {
-  originalRenderAll.apply(this, args);
-  // safe-guard: element might not exist during init
-  if (document.getElementById('statTotal')) renderStats();
-};
-
-// call once on load if needed
-// renderStats();  // not necessary if renderAll runs on init
-
-
-/* utilities */
-function getLastNDates(n){ const arr=[]; for(let i=n-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); arr.push(d.toISOString().split('T')[0]); } return arr; }
-function toggleHabit(goalId,dateStr){ const g = goals.find(x=>x.id===goalId); if(!g) return; g.history = g.history || {}; g.history[dateStr] = !g.history[dateStr]; save(); renderAll(); }
-function recordFail(goalId){ const g = goals.find(x=>x.id===goalId); if(!g) return; const base = g.lastFail || g.startDate || g.createdAt || todayStr(); const cur = Math.max(0, daysBetween(base, todayStr())); g.bestStreak = Math.max(g.bestStreak||0, cur); g.lastFail = todayStr(); save(); renderAll(); }
 
 /* modals open/close */
 function openModalBg(bg){ bg.classList.add('open'); bg.setAttribute('aria-hidden','false'); }
@@ -355,17 +606,101 @@ dom.saveStreakBtn && dom.saveStreakBtn.addEventListener('click', ()=>{
   const start = dom.streakStartDate.value || todayStr();
   if(!title){ alert('Tytuł wymagany'); return; }
   const now = new Date().toISOString();
-  if(editStreakIndex===null){ const obj={ id:genId(), type:'streakGoal', title, desc, category, startDate:start, lastFail:null, bestStreak:0, createdAt:now }; goals.push(obj); }
-  else { const g=goals[editStreakIndex]; g.title=title; g.desc=desc; g.category=category; g.startDate=start; }
+  if(editStreakIndex===null){ 
+    const obj={ 
+      id:genId(), 
+      type:'streakGoal', 
+      title, 
+      desc, 
+      category, 
+      startDate:start, 
+      lastFail:null, 
+      bestStreak:0, 
+      failDates:[], // Inicjalizacja tablicy failDates
+      createdAt:now 
+    }; 
+    goals.push(obj); 
+  } else { 
+    const g=goals[editStreakIndex]; 
+    g.title=title; 
+    g.desc=desc; 
+    g.category=category; 
+    g.startDate=start; 
+    // Upewnij się, że failDates istnieje
+    if (!Array.isArray(g.failDates)) {
+      g.failDates = [];
+    }
+  }
   save(); closeModalBg(dom.streakBg); renderAll();
 });
 
 /* close modals by clicking background */
 [dom.simpleBg, dom.progressBg, dom.habitBg, dom.streakBg].forEach(bg=>{ if(!bg) return; bg.addEventListener('click', (e)=>{ if(e.target===bg) closeModalBg(bg); }); });
 
+/* ========== SEARCH & FILTER EVENT LISTENERS ========== */
+function setupSearchAndFilters() {
+  // Search input
+  if (dom.searchInput) {
+    dom.searchInput.addEventListener('input', (e) => {
+      currentFilters.search = e.target.value;
+      applyFiltersAndSort();
+    });
+  }
+  
+  // Clear search button
+  if (dom.clearSearchBtn) {
+    dom.clearSearchBtn.addEventListener('click', () => {
+      dom.searchInput.value = '';
+      currentFilters.search = '';
+      applyFiltersAndSort();
+    });
+  }
+  
+  // Type filter
+  if (dom.typeFilter) {
+    dom.typeFilter.addEventListener('change', (e) => {
+      currentFilters.type = e.target.value;
+      applyFiltersAndSort();
+    });
+  }
+  
+  // Category filter
+  if (dom.categoryFilter) {
+    dom.categoryFilter.addEventListener('change', (e) => {
+      currentFilters.category = e.target.value;
+      applyFiltersAndSort();
+    });
+  }
+  
+  // Status filter
+  if (dom.statusFilter) {
+    dom.statusFilter.addEventListener('change', (e) => {
+      currentFilters.status = e.target.value;
+      applyFiltersAndSort();
+    });
+  }
+  
+  // Sort filter
+  if (dom.sortFilter) {
+    dom.sortFilter.addEventListener('change', (e) => {
+      currentFilters.sort = e.target.value;
+      applyFiltersAndSort();
+    });
+  }
+  
+  // Clear filters button
+  if (dom.clearFiltersBtn) {
+    dom.clearFiltersBtn.addEventListener('click', clearAllFilters);
+  }
+}
+
 /* init */
 function init(){
-  load(); renderAll();
+  load(); 
+  setupSearchAndFilters();
+  setupCollapsibleControls();
+  renderAll();
   dom.logoutBtn && dom.logoutBtn.addEventListener('click', ()=>{ if(confirm('Wylogować i wyczyścić dane lokalne?')){ localStorage.clear(); location.reload(); } });
 }
+
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
