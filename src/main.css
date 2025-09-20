@@ -432,6 +432,61 @@ h1 { text-align:center; color:var(--accent-contrast); margin: 8px 0 18px; font-s
 .modal-actions { display:flex; gap:8px; justify-content:flex-end; width:100%; margin-top:6px; }
 .modal-actions .primary { flex:1; padding:10px 14px; border-radius:10px; background: linear-gradient(135deg,var(--accent1),var(--accent2)); color:var(--text); border:none; min-height:40px; cursor:pointer; font-weight:700; }
 
+/* ========== SYNC STATUS STYLES ========== */
+.sync-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 3000;
+  transition: all 0.3s ease;
+  box-shadow: var(--soft-shadow);
+  max-width: 200px;
+}
+
+.sync-status.saving {
+  background: rgba(255, 193, 7, 0.9);
+  color: #000;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.sync-status.loading {
+  background: rgba(3, 169, 244, 0.9);
+  color: #fff;
+  border: 1px solid rgba(3, 169, 244, 0.3);
+}
+
+.sync-status.synced {
+  background: rgba(76, 175, 80, 0.9);
+  color: #fff;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.sync-status.offline {
+  background: rgba(156, 39, 176, 0.9);
+  color: #fff;
+  border: 1px solid rgba(156, 39, 176, 0.3);
+}
+
+.sync-status.error {
+  background: rgba(244, 67, 54, 0.9);
+  color: #fff;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+@media (max-width: 768px) {
+  .sync-status {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    text-align: center;
+    max-width: none;
+  }
+}
+
 /* utility */
 .hidden { display:none !important; }
 @media (max-width:600px) {

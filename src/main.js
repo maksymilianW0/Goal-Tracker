@@ -1,18 +1,219 @@
-/* app.js – multi-type goals: simpleGoal, progressGoal, habitGoal, streakGoal
+function genId(){ if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); return 'id-' + Math.random().toString(36).slice(2,9); }
+function todayStr(){ const d=new Date(); return d.toISOString().split('T')[0]; }
+function daysBetween(a,b){ const A=new Date(a+'T00:00:00'), B=new Date(b+'T00:00:00'); return Math.floor((B-A)/(1000*60*60*24)); }/* app.js – multi-type goals: simpleGoal, progressGoal, habitGoal, streakGoal
    poprz. zmiany: streakGoal ma opis; finished goals mają klasę .card-done; logout button style przywrócony 
    NAPRAWIONO: błędy w computeBestStreak, renderStats, failDates array handling, collapsible sections */
 'use strict';
 
 const STORAGE_KEY = 'goals_v1';
+const API_BASE_URL = '/api'; // Zmień na swój URL API
 let goals = [];
 let categories = [];
+let isOnline = navigator.onLine;
+let syncInProgress = false;
 
-function genId(){ if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); return 'id-' + Math.random().toString(36).slice(2,9); }
-function todayStr(){ const d=new Date(); return d.toISOString().split('T')[0]; }
-function daysBetween(a,b){ const A=new Date(a+'T00:00:00'), B=new Date(b+'T00:00:00'); return Math.floor((B-A)/(1000*60*60*24)); }
+// API Configuration
+const API_CONFIG = {
+  timeout: 10000, // 10 sekund
+  retries: 3,
+  retryDelay: 1000 // 1 sekunda
+};
 
-function load(){ try { const raw=localStorage.getItem(STORAGE_KEY); goals = raw ? JSON.parse(raw) : []; const set=new Set(); goals.forEach(g=>g.category && set.add(g.category)); categories = Array.from(set); } catch(e){ console.error(e); goals=[]; categories=[]; } }
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(goals)); }
+/* ========== API FUNCTIONS ========== */
+async function apiRequest(endpoint, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout);
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout');
+    }
+    throw error;
+  }
+}
+
+async function saveToAPI(data, retryCount = 0) {
+  try {
+    showSyncStatus('saving');
+    const response = await apiRequest('/save', {
+      method: 'POST',
+      body: JSON.stringify({ goals: data })
+    });
+    
+    console.log('✅ Saved to API successfully');
+    showSyncStatus('synced');
+    return response;
+  } catch (error) {
+    console.error('❌ API Save error:', error);
+    
+    if (retryCount < API_CONFIG.retries) {
+      console.log(`🔄 Retrying save... (${retryCount + 1}/${API_CONFIG.retries})`);
+      await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay));
+      return saveToAPI(data, retryCount + 1);
+    }
+    
+    // Fallback to localStorage
+    console.log('💾 Falling back to localStorage');
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(STORAGE_KEY + '_needs_sync', 'true');
+    showSyncStatus('offline');
+    throw error;
+  }
+}
+
+async function loadFromAPI(retryCount = 0) {
+  try {
+    showSyncStatus('loading');
+    const response = await apiRequest('/load');
+    
+    console.log('✅ Loaded from API successfully');
+    showSyncStatus('synced');
+    
+    // Save to localStorage as backup
+    if (response.goals) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(response.goals));
+      localStorage.removeItem(STORAGE_KEY + '_needs_sync');
+      return response.goals;
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('❌ API Load error:', error);
+    
+    if (retryCount < API_CONFIG.retries) {
+      console.log(`🔄 Retrying load... (${retryCount + 1}/${API_CONFIG.retries})`);
+      await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay));
+      return loadFromAPI(retryCount + 1);
+    }
+    
+    // Fallback to localStorage
+    console.log('💾 Falling back to localStorage');
+    const localData = localStorage.getItem(STORAGE_KEY);
+    showSyncStatus('offline');
+    return localData ? JSON.parse(localData) : [];
+  }
+}
+
+/* ========== SYNC STATUS UI ========== */
+function showSyncStatus(status) {
+  let statusEl = document.getElementById('syncStatus');
+  if (!statusEl) {
+    statusEl = document.createElement('div');
+    statusEl.id = 'syncStatus';
+    statusEl.className = 'sync-status';
+    document.body.appendChild(statusEl);
+  }
+  
+  const statusConfig = {
+    saving: { text: '💾 Zapisywanie...', class: 'saving' },
+    loading: { text: '📥 Ładowanie...', class: 'loading' },
+    synced: { text: '✅ Zsynchronizowano', class: 'synced' },
+    offline: { text: '📱 Tryb offline', class: 'offline' },
+    error: { text: '❌ Błąd synchronizacji', class: 'error' }
+  };
+  
+  const config = statusConfig[status] || statusConfig.error;
+  statusEl.textContent = config.text;
+  statusEl.className = `sync-status ${config.class}`;
+  
+  // Auto-hide success messages
+  if (status === 'synced') {
+    setTimeout(() => {
+      statusEl.style.opacity = '0';
+      setTimeout(() => statusEl.remove(), 300);
+    }, 2000);
+  }
+}
+
+/* ========== SYNC LOGIC ========== */
+async function syncPendingChanges() {
+  const needsSync = localStorage.getItem(STORAGE_KEY + '_needs_sync');
+  if (!needsSync || syncInProgress) return;
+  
+  syncInProgress = true;
+  try {
+    const localData = localStorage.getItem(STORAGE_KEY);
+    if (localData) {
+      const goals = JSON.parse(localData);
+      await saveToAPI(goals);
+    }
+  } catch (error) {
+    console.error('Sync failed:', error);
+  } finally {
+    syncInProgress = false;
+  }
+}
+
+// Auto-sync when coming online
+window.addEventListener('online', () => {
+  isOnline = true;
+  console.log('🌐 Back online - syncing...');
+  syncPendingChanges();
+});
+
+window.addEventListener('offline', () => {
+  isOnline = false;
+  console.log('📱 Gone offline');
+  showSyncStatus('offline');
+});
+
+/* ========== UPDATED SAVE/LOAD FUNCTIONS ========== */
+async function save() { 
+  try {
+    if (isOnline) {
+      await saveToAPI(goals);
+    } else {
+      // Offline - save to localStorage with sync flag
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(goals));
+      localStorage.setItem(STORAGE_KEY + '_needs_sync', 'true');
+      showSyncStatus('offline');
+    }
+  } catch (error) {
+    console.error('Save error:', error);
+    showSyncStatus('error');
+  }
+}
+
+async function load() { 
+  try { 
+    if (isOnline) {
+      goals = await loadFromAPI();
+    } else {
+      // Offline - load from localStorage
+      const raw = localStorage.getItem(STORAGE_KEY);
+      goals = raw ? JSON.parse(raw) : [];
+      showSyncStatus('offline');
+    }
+    
+    // Rebuild categories
+    const set = new Set(); 
+    goals.forEach(g => g.category && set.add(g.category)); 
+    categories = Array.from(set); 
+  } catch(e) { 
+    console.error('Load error:', e); 
+    goals = []; 
+    categories = []; 
+    showSyncStatus('error');
+  } 
+}
 
 const dom = {
   addSplit: document.getElementById('addSplit'),
@@ -695,12 +896,31 @@ function setupSearchAndFilters() {
 }
 
 /* init */
-function init(){
-  load(); 
+async function init(){
+  await load(); 
   setupSearchAndFilters();
   setupCollapsibleControls();
   renderAll();
-  dom.logoutBtn && dom.logoutBtn.addEventListener('click', ()=>{ if(confirm('Wylogować i wyczyścić dane lokalne?')){ localStorage.clear(); location.reload(); } });
+  
+  // Auto-sync check on app start
+  if (isOnline) {
+    syncPendingChanges();
+  }
+  
+  dom.logoutBtn && dom.logoutBtn.addEventListener('click', async ()=>{ 
+    if(confirm('Wylogować i wyczyścić dane lokalne?')){ 
+      try {
+        // Clear API data (implement this endpoint if needed)
+        // await apiRequest('/clear', { method: 'POST' });
+        localStorage.clear(); 
+        location.reload(); 
+      } catch (error) {
+        console.error('Logout error:', error);
+        localStorage.clear(); 
+        location.reload();
+      }
+    } 
+  });
 }
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
