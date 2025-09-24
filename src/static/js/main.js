@@ -221,7 +221,7 @@ const dom = {
   toggleAddMenuBtn: document.getElementById('toggleAddMenuBtn'),
   addGoalMenu: document.getElementById('addGoalMenu'),
   goalsGrid: document.getElementById('goalsGrid'),
-  logoutBtn: document.getElementById('logoutBtn'),
+  //logoutBtn: document.getElementById('logoutBtn'),
 
   // Search & Filters
   searchInput: document.getElementById('searchInput'),
@@ -907,20 +907,20 @@ async function init(){
     syncPendingChanges();
   }
   
-  dom.logoutBtn && dom.logoutBtn.addEventListener('click', async ()=>{ 
-    if(confirm('Wylogować i wyczyścić dane lokalne?')){ 
-      try {
-        // Clear API data (implement this endpoint if needed)
-        // await apiRequest('/clear', { method: 'POST' });
-        localStorage.clear(); 
-        location.reload(); 
-      } catch (error) {
-        console.error('Logout error:', error);
-        localStorage.clear(); 
-        location.reload();
-      }
-    } 
-  });
+  // dom.logoutBtn && dom.logoutBtn.addEventListener('click', async ()=>{ 
+  //   if(confirm('Wylogować i wyczyścić dane lokalne?')){ 
+  //     try {
+  //       // Clear API data (implement this endpoint if needed)
+  //       await apiRequest('/logout', { method: 'POST' });
+  //       localStorage.clear(); 
+  //       location.reload(); 
+  //     } catch (error) {
+  //       console.error('Logout error:', error);
+  //       localStorage.clear(); 
+  //       location.reload();
+  //     }
+  //   } 
+  // });
 }
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();

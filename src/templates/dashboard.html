@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Goal Tracker</title>
-  <link rel="stylesheet" href="main.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
   <!-- <script>
     (function(){
       const R = Date;          // oryginalny Date (nie ruszaj)
@@ -42,7 +42,9 @@
   <nav id="navbar">
     <div class="nav-left"><span class="logo">GoalTracker</span></div>
     <div class="nav-right">
-      <button id="logoutBtn" class="logout-btn">🚪 Wyloguj</button>
+      <form action="/logout" method="post">
+        <button id="logoutBtn" class="logout-btn" type="submit">🚪 Wyloguj</button>
+      </form>
     </div>
   </nav>
 
@@ -293,6 +295,6 @@
     </div>
   </div>
 
-  <script src="main.js"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

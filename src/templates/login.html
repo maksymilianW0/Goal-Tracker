@@ -327,11 +327,10 @@
       <div class="logo-subtitle">Zarządzaj swoimi celami</div>
     </div>
 
-    <!-- Server Messages (populated by your backend) -->
-    <!-- Example error message - remove/populate from server -->
-    <!-- <div class="message error">Nieprawidłowy email lub hasło</div> -->
-    <!-- <div class="message success">Zostałeś pomyślnie wylogowany</div> -->
-    <!-- <div class="message info">Sprawdź email i kliknij link aktywacyjny</div> -->
+    <!-- Server Messages from Flask -->
+    {% if error %}
+      <div class="message error">{{ error }}</div>
+    {% endif %}
 
     <!-- Login Form -->
     <form method="POST" action="/login" id="loginForm">
@@ -345,7 +344,7 @@
           placeholder="Wprowadź swój email"
           required
           autocomplete="email"
-          value=""
+          value="{{ request.form.email if request.form.email }}"
         />
       </div>
 
@@ -370,10 +369,16 @@
             id="remember" 
             name="remember"
             class="form-checkbox"
+            {{ 'checked' if request.form.remember == 'on' }}
           />
           <label for="remember" class="checkbox-label">Zapamiętaj mnie</label>
         </div>
       </div>
+
+      <!-- Optional redirect parameter -->
+      {% if request.args.get('redirect') %}
+      <input type="hidden" name="redirect" value="{{ request.args.get('redirect') }}" />
+      {% endif %}
 
       <button type="submit" class="login-btn">
         Zaloguj się
