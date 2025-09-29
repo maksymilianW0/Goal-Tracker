@@ -248,7 +248,7 @@ def health():
 def not_found(error):
     if session.get("logged_in"):
         return redirect("/dashboard")
-    return redirect("/login")
+    return redirect("/")
 
 @app.errorhandler(500)
 def internal_error(error):
