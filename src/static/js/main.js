@@ -6,7 +6,7 @@ function daysBetween(a,b){ const A=new Date(a+'T00:00:00'), B=new Date(b+'T00:00
 'use strict';
 
 const STORAGE_KEY = 'goals_v1';
-const API_BASE_URL = '/api'; // Zmień na swój URL API
+const API_BASE_URL = ''; // Pusty - używamy relatywnych URLi
 let goals = [];
 let categories = [];
 let isOnline = navigator.onLine;
@@ -25,7 +25,7 @@ async function apiRequest(endpoint, options = {}) {
   const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout);
   
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`/api${endpoint}`, {
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
@@ -221,7 +221,7 @@ const dom = {
   toggleAddMenuBtn: document.getElementById('toggleAddMenuBtn'),
   addGoalMenu: document.getElementById('addGoalMenu'),
   goalsGrid: document.getElementById('goalsGrid'),
-  //logoutBtn: document.getElementById('logoutBtn'),
+  logoutBtn: document.getElementById('logoutBtn'),
 
   // Search & Filters
   searchInput: document.getElementById('searchInput'),
@@ -603,18 +603,22 @@ function computeStats() {
   const progressGoals = goals.filter(g => g.type === 'progressGoal');
   const avgProgress = progressGoals.length ? Math.round(progressGoals.reduce((s,g)=>s+(g.progress||0),0)/progressGoals.length) : null;
 
-  // habit completion rate over last 7 days (global)
+  // habit completion rate over last 7 days (global) - POPRAWIONE: liczy wszystkie 7 dni
   const last7 = getLastNDates(7);
   let habitDone = 0, habitTotal = 0;
-  goals.filter(g=>g.type==='habitGoal').forEach(g=>{
+  const habitGoals = goals.filter(g=>g.type==='habitGoal');
+  
+  // Dla każdego habit goal liczymy WSZYSTKIE 7 dni
+  habitGoals.forEach(g=>{
     last7.forEach(d=>{
-      if (g.history && typeof g.history[d] !== 'undefined') {
-        habitTotal++;
-        if (g.history[d]) habitDone++;
+      habitTotal++; // Każdy dzień się liczy
+      if (g.history && g.history[d]) {
+        habitDone++; // Tylko jeśli oznaczony jako done
       }
     });
   });
-  const habitRate = habitTotal ? Math.round((habitDone / habitTotal) * 100) : null;
+  
+  const habitRate = habitTotal > 0 ? Math.round((habitDone / habitTotal) * 100) : null;
 
   // streaks: active count (current>0), best overall, total fails
   let activeStreaks = 0, bestStreak = 0, totalFails = 0;
@@ -651,12 +655,20 @@ function computeStats() {
     })
     .sort((a,b) => a.deadline.localeCompare(b.deadline));
 
-  // top streaks list (by bestStreak)
+  // top streaks list (by CURRENT streak, not just best)
   const topStreaks = goals
     .filter(g => g.type === 'streakGoal')
-    .map(g => ({ title: g.title, best: computeBestStreak(g) }))
-    .filter(g => g.best > 0) // tylko te z jakąś serią
-    .sort((a,b) => b.best - a.best)
+    .map(g => {
+      const base = g.lastFail || g.startDate || (g.createdAt ? g.createdAt.split('T')[0] : todayStr());
+      const current = Math.max(0, daysBetween(base, todayStr()));
+      return { 
+        title: g.title, 
+        current: current,
+        best: g.bestStreak || 0 
+      };
+    })
+    .filter(g => g.current > 0) // tylko te z aktualną serią
+    .sort((a,b) => b.current - a.current) // sortuj po CURRENT
     .slice(0,5);
 
   return {
@@ -710,11 +722,11 @@ function renderStats() {
   if (topEl) {
     topEl.innerHTML = '';
     if (s.topStreaks.length === 0) {
-      const li = document.createElement('li'); li.textContent = 'Brak streakóв'; topEl.appendChild(li);
+      const li = document.createElement('li'); li.textContent = 'Brak streaków'; topEl.appendChild(li);
     } else {
       s.topStreaks.forEach(t => {
         const li = document.createElement('li');
-        li.innerHTML = `<span>${t.title}</span><small>${t.best} dni</small>`;
+        li.innerHTML = `<span>${t.title}</span><small>${t.current} dni (best: ${t.best})</small>`;
         topEl.appendChild(li);
       });
     }
@@ -907,20 +919,20 @@ async function init(){
     syncPendingChanges();
   }
   
-  // dom.logoutBtn && dom.logoutBtn.addEventListener('click', async ()=>{ 
-  //   if(confirm('Wylogować i wyczyścić dane lokalne?')){ 
-  //     try {
-  //       // Clear API data (implement this endpoint if needed)
-  //       await apiRequest('/logout', { method: 'POST' });
-  //       localStorage.clear(); 
-  //       location.reload(); 
-  //     } catch (error) {
-  //       console.error('Logout error:', error);
-  //       localStorage.clear(); 
-  //       location.reload();
-  //     }
-  //   } 
-  // });
+  dom.logoutBtn && dom.logoutBtn.addEventListener('click', async ()=>{ 
+    if(confirm('Wylogować i wyczyścić dane lokalne?')){ 
+      try {
+        // Clear API data (implement this endpoint if needed)
+        // await apiRequest('/clear', { method: 'POST' });
+        localStorage.clear(); 
+        location.reload(); 
+      } catch (error) {
+        console.error('Logout error:', error);
+        localStorage.clear(); 
+        location.reload();
+      }
+    } 
+  });
 }
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
